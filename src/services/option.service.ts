@@ -11,10 +11,12 @@ import {
   getDoc,
   orderBy,
   updateDoc,
-  limit
+  limit,
+  runTransaction
 } from 'firebase/firestore'
 import { useCollection } from 'vuefire'
 import { uploadImageToFirebase } from './upload.service'
+import { IUser } from '@/core/interfaces/model/user'
 
 /**
  * Get list option by topic id and order by voteCount (descending)
@@ -121,4 +123,100 @@ export const getOptionById = async (optionId: string): Promise<IOption> => {
 export const putOptionData = async (option: IOption) => {
   const topicRef = doc(db, 'options', option.id)
   return await updateDoc(topicRef, { ...option })
+}
+
+
+/**
+ * Handle single vote mode - user can only vote for one option
+ * @param optionId - ID of the option to vote for
+ * @param currentUserId - ID of the current user
+ * @param previousOptionId - ID of the previously voted option (if any)
+ * @returns Promise<void>
+ */
+export const handleSingleVote = async (
+  optionId: string,
+  currentUserId: string,
+  previousOptionId: string | null
+): Promise<void> => {
+  await runTransaction(db, async (transaction) => {
+    // Handle previous vote if exists
+    if (previousOptionId) {
+      const prevOptionRef = doc(db, 'options', previousOptionId)
+      const prevOptionDoc = await transaction.get(prevOptionRef)
+      
+      if (prevOptionDoc.exists()) {
+        const prevOptionData = prevOptionDoc.data()
+        const prevVoteBy = (prevOptionData.voteBy || []) as IUser[]
+        const prevUserVoteIndex = prevVoteBy.findIndex(voter => voter.id === currentUserId)
+        
+        if (prevUserVoteIndex !== -1) {
+          prevVoteBy.splice(prevUserVoteIndex, 1)
+          transaction.update(prevOptionRef, {
+            voteBy: prevVoteBy,
+            voteCount: prevOptionData.voteCount - 1
+          })
+        }
+      }
+    }
+
+    // Handle new vote
+    const optionRef = doc(db, 'options', optionId)
+    const optionDoc = await transaction.get(optionRef)
+    
+    if (!optionDoc.exists()) {
+      throw new Error('Option không tồn tại')
+    }
+
+    const optionData = optionDoc.data()
+    const voteBy = (optionData.voteBy || []) as IUser[]
+    const userVoteIndex = voteBy.findIndex(voter => voter.id === currentUserId)
+
+    if (userVoteIndex === -1) {
+      voteBy.push({ id: currentUserId } as IUser)
+      transaction.update(optionRef, {
+        voteBy,
+        voteCount: optionData.voteCount + 1
+      })
+    }
+  })
+}
+
+/**
+ * Handle multiple vote mode - user can vote for multiple options
+ * @param optionId - ID of the option to vote for
+ * @param currentUserId - ID of the current user
+ * @returns Promise<void>
+ */
+export const handleMultipleVote = async (
+  optionId: string,
+  currentUserId: string
+): Promise<void> => {
+  await runTransaction(db, async (transaction) => {
+    const optionRef = doc(db, 'options', optionId)
+    const optionDoc = await transaction.get(optionRef)
+    
+    if (!optionDoc.exists()) {
+      throw new Error('Option không tồn tại')
+    }
+
+    const optionData = optionDoc.data()
+    const voteBy = (optionData.voteBy || []) as IUser[]
+    const userVoteIndex = voteBy.findIndex(voter => voter.id === currentUserId)
+    
+    if (userVoteIndex !== -1) {
+      // Unvote
+      voteBy.splice(userVoteIndex, 1)
+      transaction.update(optionRef, {
+        voteBy,
+        voteCount: optionData.voteCount - 1
+      })
+    } else {
+      // Vote
+      voteBy.push({ id: currentUserId } as IUser)
+      transaction.update(optionRef, {
+        voteBy,
+        voteCount: optionData.voteCount + 1
+      })
+    }
+  })
 }
