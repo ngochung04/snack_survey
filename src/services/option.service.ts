@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore'
 import { useCollection } from 'vuefire'
 import { uploadImageToFirebase } from './upload.service'
-import { IUser } from '@/core/interfaces/model/user'
+import type { IUser } from '@/core/interfaces/model/user'
 
 /**
  * Get list option by topic id and order by voteCount (descending)
@@ -32,7 +32,12 @@ export const getOptionsByTopicId = async (topicId: string) => {
 
 export const getRankByTopicId = async (topicId: string) => {
   const result = useCollection<IOption>(
-    query(collection(db, 'options'), where('topicId', '==', topicId), orderBy('voteCount', 'desc'), limit(3))
+    query(
+      collection(db, 'options'),
+      where('topicId', '==', topicId),
+      orderBy('voteCount', 'desc'),
+      limit(3)
+    )
   )
   return result
 }
@@ -125,7 +130,6 @@ export const putOptionData = async (option: IOption) => {
   return await updateDoc(topicRef, { ...option })
 }
 
-
 /**
  * Handle single vote mode - user can only vote for one option
  * @param optionId - ID of the option to vote for
@@ -135,7 +139,7 @@ export const putOptionData = async (option: IOption) => {
  */
 export const handleSingleVote = async (
   optionId: string,
-  currentUserId: string,
+  currentUser: IUser,
   previousOptionId: string | null
 ): Promise<void> => {
   await runTransaction(db, async (transaction) => {
@@ -143,12 +147,12 @@ export const handleSingleVote = async (
     if (previousOptionId) {
       const prevOptionRef = doc(db, 'options', previousOptionId)
       const prevOptionDoc = await transaction.get(prevOptionRef)
-      
+
       if (prevOptionDoc.exists()) {
         const prevOptionData = prevOptionDoc.data()
         const prevVoteBy = (prevOptionData.voteBy || []) as IUser[]
-        const prevUserVoteIndex = prevVoteBy.findIndex(voter => voter.id === currentUserId)
-        
+        const prevUserVoteIndex = prevVoteBy.findIndex((voter) => voter.id === currentUser.id)
+
         if (prevUserVoteIndex !== -1) {
           prevVoteBy.splice(prevUserVoteIndex, 1)
           transaction.update(prevOptionRef, {
@@ -162,17 +166,17 @@ export const handleSingleVote = async (
     // Handle new vote
     const optionRef = doc(db, 'options', optionId)
     const optionDoc = await transaction.get(optionRef)
-    
+
     if (!optionDoc.exists()) {
       throw new Error('Option không tồn tại')
     }
 
     const optionData = optionDoc.data()
     const voteBy = (optionData.voteBy || []) as IUser[]
-    const userVoteIndex = voteBy.findIndex(voter => voter.id === currentUserId)
+    const userVoteIndex = voteBy.findIndex((voter) => voter.id === currentUser.id)
 
     if (userVoteIndex === -1) {
-      voteBy.push({ id: currentUserId } as IUser)
+      voteBy.push(currentUser)
       transaction.update(optionRef, {
         voteBy,
         voteCount: optionData.voteCount + 1
@@ -187,22 +191,19 @@ export const handleSingleVote = async (
  * @param currentUserId - ID of the current user
  * @returns Promise<void>
  */
-export const handleMultipleVote = async (
-  optionId: string,
-  currentUserId: string
-): Promise<void> => {
+export const handleMultipleVote = async (optionId: string, currentUser: IUser): Promise<void> => {
   await runTransaction(db, async (transaction) => {
     const optionRef = doc(db, 'options', optionId)
     const optionDoc = await transaction.get(optionRef)
-    
+
     if (!optionDoc.exists()) {
       throw new Error('Option không tồn tại')
     }
 
     const optionData = optionDoc.data()
     const voteBy = (optionData.voteBy || []) as IUser[]
-    const userVoteIndex = voteBy.findIndex(voter => voter.id === currentUserId)
-    
+    const userVoteIndex = voteBy.findIndex((voter) => voter.id === currentUser.id)
+
     if (userVoteIndex !== -1) {
       // Unvote
       voteBy.splice(userVoteIndex, 1)
@@ -212,7 +213,7 @@ export const handleMultipleVote = async (
       })
     } else {
       // Vote
-      voteBy.push({ id: currentUserId } as IUser)
+      voteBy.push(currentUser)
       transaction.update(optionRef, {
         voteBy,
         voteCount: optionData.voteCount + 1

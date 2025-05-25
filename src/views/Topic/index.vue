@@ -1,30 +1,17 @@
-/**
- * Topic Page Component
- * 
- * This component displays a topic with its options and voting functionality.
- * It supports both single and multiple vote modes, real-time updates, and countdown timer.
- * 
- * Key Features:
- * - Display topic details (name, description, deadline)
- * - Show top 3 voted options in a special rank display
- * - List all options with voting functionality
- * - Real-time countdown timer for topic deadline
- * - Support for both single and multiple vote modes
- * - User authentication and vote tracking
- */
-
 <template>
   <v-container id="topic">
     <!-- Left Area: Topic Details and Top 3 Options -->
     <v-sheet max-width="638" rounded width="100%" class="mx-auto left-area">
       <!-- Topic Information Section -->
-      <div class="mx-auto left-area" style="width: 100% !important; max-width: 400px;">
+      <div class="mx-auto left-area" style="width: 100% !important; max-width: 400px">
         <h1 class="text-white text-h4 mb-2">{{ currentTopic?.name }}</h1>
         <p class="text-white text-body-1 mb-1 text-break">{{ currentTopic?.description }}</p>
         <p class="text-white text-body-1 mb-8">
           Thời hạn:
           {{
-            dayjs(new Date((currentTopic?.date as any)?.seconds * 1000)).format('DD/MM/YYYY, HH:MM:ss')
+            dayjs(new Date((currentTopic?.date as any)?.seconds * 1000)).format(
+              'DD/MM/YYYY, HH:MM:ss'
+            )
           }}
         </p>
         <!-- Countdown Timer Display -->
@@ -120,8 +107,6 @@
           :id="id.toString()"
           :options="options"
           :topic-state="currentTopic"
-          @update-options-data="updateOptionsData"
-          @reload-options="handleReloadOptions"
         />
       </div>
 
@@ -149,7 +134,7 @@
           ></option-card>
         </div>
         <section v-else>
-          <p style="font-size: large;">No option yet!</p>
+          <p style="font-size: large">No option yet!</p>
         </section>
       </div>
     </v-sheet>
@@ -190,11 +175,16 @@ import type { ITopic } from '@/core/interfaces/model/topic'
 import type { IUser } from '@/core/interfaces/model/user'
 import { db } from '@/plugins/firebase'
 import { getAccountById } from '@/services/account.service'
-import { getOptionsByTopicId, handleMultipleVote, handleSingleVote } from '@/services/option.service'
+import {
+  getOptionsByTopicId,
+  handleMultipleVote,
+  handleSingleVote,
+  getRankByTopicId
+} from '@/services/option.service'
 import { useCommonStore } from '@/stores'
-import { doc, updateDoc } from 'firebase/firestore'
+import { collection, doc, limit, orderBy, query, updateDoc, where } from 'firebase/firestore'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import { useDocument } from 'vuefire'
+import { useCollection, useDocument } from 'vuefire'
 import OptionCard from './OptionCard.vue'
 import dayjs from 'dayjs'
 import { debounce } from 'lodash'
@@ -209,9 +199,11 @@ const { id } = getParams()
 const common = useCommonStore()
 
 // Component state
+
+// const rankData = getRankByTopicId(id.toString())
+
 const currentAccount = ref<IUser | null>(null)
 const currentTopic = useDocument<ITopic>(doc(db, 'topics', id.toString()))
-const topicOptions = ref<IOption[]>([])
 const showOverlay = ref<boolean>(false)
 const currentTime = ref(new Date().getTime())
 const listVoteBy = ref<IUser[]>([])
@@ -219,44 +211,36 @@ const dialog = ref<boolean>(false)
 const alertVote = ref<string>('')
 const alertVoteType = ref<string>('success')
 
-/**
- * Computed Properties
- */
-
-// Sort options alphabetically by title
-const options = computed(() => {
-  const sorted = [...(topicOptions.value || [])]
-  return sorted.sort((a, b) => a.title.localeCompare(b.title))
-})
-
+/** Computed Properties */
 // Get top 3 options by vote count
-const topOptions = computed(() => {
-  const sorted = [...(topicOptions.value || [])]
-  return sorted.sort((a, b) => b.voteCount - a.voteCount).slice(0, 3)
+const topOptionsRef = computed(() => {
+  return query(
+    collection(db, 'options'),
+    where('topicId', '==', id),
+    orderBy('voteCount', 'desc'),
+    limit(3)
+  )
 })
+const topOptions = useCollection<IOption>(topOptionsRef)
+// Get all options by topic id realtime
+const optionsRef = computed(() => {
+  return query(collection(db, 'options'), where('topicId', '==', id), orderBy('title', 'asc'))
+})
+const options = useCollection<IOption>(optionsRef)
 
 // Track user's voting state
 const voteState = computed(() => {
-  if (!currentAccount.value) return null
-  
-  if (currentTopic.value?.option) {
-    // Multiple vote mode - return array of voted option indices
-    const votedIndices = options.value
-      .map((option, index) => ({
-        optionId: option.id,
-        index,
-        isVoted: option.voteBy.some(voter => voter.id === currentAccount.value?.id)
-      }))
-      .filter(vote => vote.isVoted)
-      .map(vote => vote.index)
-    return votedIndices
-  } else {
-    // Single vote mode - return single voted option index
-    const votedOption = options.value.find(option => 
-      option.voteBy.some(voter => voter.id === currentAccount.value?.id)
-    )
-    return votedOption ? options.value.indexOf(votedOption) : null
-  }
+  if (!currentAccount.value) return []
+
+  const votedIndices = options.value
+    .map((option, index) => ({
+      optionId: option.id,
+      index,
+      isVoted: option.voteBy.some((voter) => voter.id === currentAccount.value?.id)
+    }))
+    .filter((vote) => vote.isVoted)
+    .map((vote) => vote.index)
+  return votedIndices
 })
 
 // Calculate remaining time until topic deadline
@@ -297,10 +281,7 @@ const countdown = computed(() => {
   return parts.join(', ')
 })
 
-/**
- * Methods
- */
-
+/** Methods */
 // Update topic status when deadline is reached
 const update = async () => {
   const topicInfo = currentTopic.value ?? {
@@ -333,23 +314,19 @@ const handleChangeVote = debounce(async (optionIndex: number) => {
 
   try {
     showOverlay.value = true
-    const currentUserId = currentAccount.value?.id
     const optionId = options.value[optionIndex].id
 
-    if (!currentUserId) {
+    if (!currentAccount.value) {
       throw new Error('User not authenticated')
     }
 
     if (currentTopic.value?.option) {
-      await handleMultipleVote(optionId, currentUserId)
+      await handleMultipleVote(optionId, currentAccount.value)
     } else {
-      const previousOptionId = voteState.value !== null 
-        ? options.value[typeof voteState.value === 'number' ? voteState.value : voteState.value[0]].id 
-        : null
-      await handleSingleVote(optionId, currentUserId, previousOptionId)
+      const previousOptionId =
+        voteState.value.length > 0 ? options.value[voteState.value[0]].id : null
+      await handleSingleVote(optionId, currentAccount.value, previousOptionId)
     }
-
-    showAlert('Vote thành công!', 'success')
   } catch (error) {
     console.error('Vote error:', error)
     showAlert('Cập nhật thất bại', 'error')
@@ -357,25 +334,6 @@ const handleChangeVote = debounce(async (optionIndex: number) => {
     showOverlay.value = false
   }
 }, 300)
-
-// Reload options data
-const handleReloadOptions = async () => {
-  const data = await getOptionsByTopicId(id.toString())
-  topicOptions.value = data.value as IOption[]
-}
-
-// Update options data after changes
-const updateOptionsData = () => {
-  if (!currentAccount.value) return
-  
-  if (currentTopic.value?.option) {
-    // Multiple vote mode - no need to update voteState as it's computed
-    return
-  } else {
-    // Single vote mode - no need to update voteState as it's computed
-    return
-  }
-}
 
 // Show temporary alert message
 const showAlert = (message: string, type: string) => {
@@ -416,10 +374,6 @@ onMounted(async () => {
 
   const userData = await getAccountById(accountId!)
   currentAccount.value = userData
-
-  // Load topic options
-  const data = await getOptionsByTopicId(id.toString())
-  topicOptions.value = data.value as IOption[]
 })
 </script>
 

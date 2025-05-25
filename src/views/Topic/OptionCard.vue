@@ -8,22 +8,29 @@
       style="position: absolute; top: -8px; left: -8px; z-index: 10"
     />
     <v-card
-      style="box-shadow: none; border: 1px solid #ebebeb; height: 100%;display: flex; flex-direction: column; padding: 8px"
+      style="
+        box-shadow: none;
+        border: 1px solid #ebebeb;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+      "
       :style="{ padding: isRankCard ? '8px' : '0', 'text-align': isRankCard ? 'center' : 'left' }"
     >
-      <div style="width: 100%;" :style="{height:isRankCard ? '136px' : '116px'}">
+      <div style="width: 100%" :style="{ height: isRankCard ? '136px' : '116px' }">
         <v-img
           :height="isRankCard ? '136px' : '116px'"
           :src="Boolean(props.option?.thumbnail) ? props.option.thumbnail : DEFAULT_CARD_IMG"
           cover
         ></v-img>
       </div>
-      <div style="position: relative;flex: 1; border-top: 1px solid #ebebeb; margin-bottom: 8px;">
+      <div style="position: relative; flex: 1; border-top: 1px solid #ebebeb; margin-bottom: 8px">
         <v-chip
           v-if="isRankCard"
           variant="flat"
           append-icon="mdi-star"
-          style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%);"
+          style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%)"
           color="orange"
         >
           <p style="font-size: 16px; font-weight: 700; color: #252525; margin: 0">
@@ -41,7 +48,7 @@
             margin-bottom: 1px;
             padding: 4px 8px 0;
           "
-          :style="{paddingTop: isRankCard ? '16px' : '4px'}"
+          :style="{ paddingTop: isRankCard ? '16px' : '4px' }"
         >
           {{ option?.title ?? '' }}
         </p>
@@ -61,7 +68,7 @@
           {{ props.option?.link }}
         </a>
       </div>
-      <v-card-actions v-if="!isRankCard" style="padding-top: 0;">
+      <v-card-actions v-if="!isRankCard" style="padding-top: 0">
         <div class="w-100 d-flex justify-space-between align-center">
           <div class="d-flex mt-1">
             <div
@@ -71,7 +78,7 @@
             >
               <v-avatar color="secondary" class="m-1" size="30">
                 <v-img v-if="user.avatar" :src="user.avatar" :alt="user.username"></v-img>
-                <span v-else>{{ user.username.charAt(0).toLocaleUpperCase() }}</span>
+                <span v-else>{{ user.username?.charAt(0).toLocaleUpperCase() }}</span>
                 <v-tooltip activator="parent" location="top">{{ user.username }}</v-tooltip>
               </v-avatar>
             </div>
@@ -128,5 +135,11 @@ const handleChangeVote = (index: number) => {
 
 const onClickSeeMore = (payload: IOption) => {
   emits('onClickSeeMore', payload)
+}
+</script>
+
+<script lang="ts">
+export default {
+  name: 'OptionCard'
 }
 </script>

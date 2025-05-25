@@ -57,13 +57,13 @@
             variant="outlined"
           ></v-text-field>
           <v-file-input
-              v-if="props.topicState.link"
-              label="Upload Image (optional, max 5MB)"
-              accept="image/*"
-              outlined
-              @change="handleFileChange"
-              :error-messages="uploadMessage"
-            ></v-file-input>
+            v-if="props.topicState.link"
+            label="Upload Image (optional, max 5MB)"
+            accept="image/*"
+            outlined
+            @change="handleFileChange"
+            :error-messages="uploadMessage"
+          ></v-file-input>
 
           <v-btn
             text="Huỷ"
@@ -107,11 +107,6 @@ const props = defineProps<{
   options: IOption[]
 }>()
 
-const emits = defineEmits<{
-  (e: 'reloadOptions'): void
-  (e: 'updateOptionsData'): void
-}>()
-
 const hasError = ref<boolean>(false)
 const message = ref<String>('')
 const uploadMessage = ref('')
@@ -121,7 +116,7 @@ const form = reactive({
   title: ''
 })
 
-const isOpen = ref(false);
+const isOpen = ref(false)
 const image = ref<File | null>(null)
 
 /** handle user upload and change thubmnail file event */
@@ -167,8 +162,6 @@ const handleAddOption = async () => {
       await postNewOption(form.title, form.link, props.id, image.value)
       hasError.value = false
       message.value = 'Tạo mới thành công'
-      emits('reloadOptions')
-      emits('updateOptionsData')
       handleResetForm()
     }
   } catch {
@@ -190,6 +183,6 @@ const handleResetForm = () => {
   form.link = ''
   form.title = ''
   image.value = null
-  isOpen.value = true;
+  isOpen.value = true
 }
 </script>
