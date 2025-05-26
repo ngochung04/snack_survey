@@ -169,26 +169,26 @@
 </template>
 
 <script setup lang="ts">
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { useCollection, useDocument } from 'vuefire'
+import dayjs from 'dayjs'
+import { debounce } from 'lodash'
+
+import { ETopicTeam } from '@/core/constants/enum'
 import useCommon from '@/core/hooks/useCommon'
 import type { IOption } from '@/core/interfaces/model/option'
 import type { ITopic } from '@/core/interfaces/model/topic'
 import type { IUser } from '@/core/interfaces/model/user'
-import { db } from '@/plugins/firebase'
 import { getAccountById } from '@/services/account.service'
 import {
-  getOptionsByTopicId,
+  getOptionsRefById,
   handleMultipleVote,
   handleSingleVote,
   getRankByTopicId
 } from '@/services/option.service'
+import { getTopicRef, updateTopic } from '@/services/topic.service'
 import { useCommonStore } from '@/stores'
-import { collection, doc, limit, orderBy, query, updateDoc, where } from 'firebase/firestore'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import { useCollection, useDocument } from 'vuefire'
 import OptionCard from './OptionCard.vue'
-import dayjs from 'dayjs'
-import { debounce } from 'lodash'
-import { ETopicTeam } from '@/core/constants/enum'
 
 // Lazy load the form component
 const FormCreateOption = defineAsyncComponent(() => import('./FormCreateOption.vue'))
@@ -199,11 +199,7 @@ const { id } = getParams()
 const common = useCommonStore()
 
 // Component state
-
-// const rankData = getRankByTopicId(id.toString())
-
 const currentAccount = ref<IUser | null>(null)
-const currentTopic = useDocument<ITopic>(doc(db, 'topics', id.toString()))
 const showOverlay = ref<boolean>(false)
 const currentTime = ref(new Date().getTime())
 const listVoteBy = ref<IUser[]>([])
@@ -212,19 +208,18 @@ const alertVote = ref<string>('')
 const alertVoteType = ref<string>('success')
 
 /** Computed Properties */
+const topicRef = computed(() => {
+  return getTopicRef(id.toString());
+})
+const currentTopic = useDocument<ITopic>(topicRef)
 // Get top 3 options by vote count
 const topOptionsRef = computed(() => {
-  return query(
-    collection(db, 'options'),
-    where('topicId', '==', id),
-    orderBy('voteCount', 'desc'),
-    limit(3)
-  )
+  return getRankByTopicId(id.toString())
 })
 const topOptions = useCollection<IOption>(topOptionsRef)
 // Get all options by topic id realtime
 const optionsRef = computed(() => {
-  return query(collection(db, 'options'), where('topicId', '==', id), orderBy('title', 'asc'))
+  return getOptionsRefById(id.toString())
 })
 const options = useCollection<IOption>(optionsRef)
 
@@ -295,14 +290,7 @@ const update = async () => {
     team: ETopicTeam.ALL
   }
   topicInfo.status = false
-  const topicRef = doc(db, 'topics', topicInfo.id)
-  try {
-    await updateDoc(topicRef, topicInfo as object)
-  } catch (e) {
-    if (e instanceof Error) {
-      console.error(e.message)
-    }
-  }
+  updateTopic(topicInfo.id, topicInfo);
 }
 
 // Handle vote changes with debounce
@@ -379,24 +367,4 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 @import './styles.scss';
-#topic {
-  max-width: 1280px;
-  height: 100vh;
-  position: fixed;
-  top: 70px;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: row;
-  margin: 0 auto;
-  z-index: 0;
-  background-size: cover;
-  overflow-y: auto;
-}
-
-@media (width <= 1024px) {
-  #topic {
-    flex-direction: column;
-  }
-}
 </style>

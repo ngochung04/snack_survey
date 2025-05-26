@@ -1,5 +1,5 @@
 import { useFirestore, useCollection } from 'vuefire'
-import { collection, getDocs, query, orderBy, getDoc, doc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, getDoc, doc, updateDoc } from 'firebase/firestore'
 import type { ITopic } from '@/core/interfaces/model/topic'
 import { ETopicTeam } from '@/core/constants/enum'
 const db = useFirestore()
@@ -45,6 +45,21 @@ export const getCloseTopicList = async (team: string | null): Promise<ITopic[]> 
 export const getTopics = useCollection(
   query(collection(db, 'topics'), orderBy('updatedAt', 'desc'))
 )
+
+export const getTopicRef = (topicId: string) => {
+  return doc(db, 'topics', topicId);
+}
+/** Update topic firebase data by id */
+export const updateTopic = async (topicId: string, topicInfo: ITopic) => {
+  try {
+    const topicRef = doc(db, 'topics', topicId)
+    await updateDoc(topicRef, topicInfo as object)
+  } catch (e) {
+    if (e instanceof Error) {
+      console.error(e.message)
+    }
+  }
+}
 
 /**
  * service get topic from firebase

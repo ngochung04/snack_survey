@@ -30,16 +30,13 @@ export const getOptionsByTopicId = async (topicId: string) => {
   return result
 }
 
-export const getRankByTopicId = async (topicId: string) => {
-  const result = useCollection<IOption>(
-    query(
-      collection(db, 'options'),
-      where('topicId', '==', topicId),
-      orderBy('voteCount', 'desc'),
-      limit(3)
-    )
+export const getRankByTopicId = (topicId: string) => {
+  return query(
+    collection(db, 'options'),
+    where('topicId', '==', topicId),
+    orderBy('voteCount', 'desc'),
+    limit(3)
   )
-  return result
 }
 
 /**
@@ -114,11 +111,10 @@ export const voteOption = async (newOptionList: IOption[]) => {
 }
 
 /**
- * get option by id from firebase
+ * get option ref by id from firebase
  */
-export const getOptionById = async (optionId: string): Promise<IOption> => {
-  const docSnap = await getDoc(doc(db, 'options', optionId))
-  return docSnap.data() as IOption
+export const getOptionsRefById = (optionId: string) => {
+  return query(collection(db, 'options'), where('topicId', '==', optionId), orderBy('title', 'asc'))
 }
 
 /**
