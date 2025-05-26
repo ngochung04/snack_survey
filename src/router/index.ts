@@ -4,7 +4,7 @@ import checkAuth from './auth.router'
 const routes = [
   {
     path: '/',
-    name: 'home',
+    name: 'app',
     component: () => import('@/layouts/BasicLayout/index.vue'),
     children: [
       {
