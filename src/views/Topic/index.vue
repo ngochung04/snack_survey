@@ -1,15 +1,20 @@
 <template>
   <v-container id="topic">
+    <!-- Left Area: Topic Details and Top 3 Options -->
     <v-sheet max-width="638" rounded width="100%" class="mx-auto left-area">
-      <div class="mx-auto left-area" style="width: 100% !important; max-width: 400px;">
+      <!-- Topic Information Section -->
+      <div class="mx-auto left-area" style="width: 100% !important; max-width: 400px">
         <h1 class="text-white text-h4 mb-2">{{ currentTopic?.name }}</h1>
         <p class="text-white text-body-1 mb-1 text-break">{{ currentTopic?.description }}</p>
         <p class="text-white text-body-1 mb-8">
           Thời hạn:
           {{
-            dayjs(new Date((currentTopic?.date as any)?.seconds * 1000)).format('DD/MM/YYYY, HH:MM:ss')
+            dayjs(new Date((currentTopic?.date as any)?.seconds * 1000)).format(
+              'DD/MM/YYYY, HH:MM:ss'
+            )
           }}
         </p>
+        <!-- Countdown Timer Display -->
         <p v-if="Boolean(countdown)" class="text-white font-weight-medium mb-4">
           <v-chip color="primary" label class="chip-with-icon">
             <v-icon icon="mdi-clock-time-eight-outline"></v-icon>
@@ -17,7 +22,10 @@
           <span class="text-red ml-1">{{ countdown }}</span>
         </p>
       </div>
+
+      <!-- Top 3 Options Display -->
       <div class="left-area__rank">
+        <!-- First Place Option -->
         <option-card
           v-if="Boolean(topOptions?.[0])"
           :index="0"
@@ -33,6 +41,7 @@
               max-height: 240px;
               scale: 1.2;"
         ></option-card>
+        <!-- Second and Third Place Options -->
         <div class="left-area__rank--bottom">
           <option-card
             v-if="Boolean(topOptions?.[1])"
@@ -63,9 +72,13 @@
         </div>
       </div>
     </v-sheet>
+
+    <!-- Right Area: Options List and Voting -->
     <v-sheet max-width="638" rounded="lg" width="100%" heigth="100%" class="mx-auto right-area">
+      <!-- Alert Messages and Option Creation Form -->
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
         <div style="flex: 1">
+          <!-- Topic Closed Alert -->
           <v-alert
             v-if="!common.loading && !currentTopic?.status && !alertVote"
             variant="outlined"
@@ -76,6 +89,7 @@
           >
             Topic này đã đóng, vui lòng trở lại sau
           </v-alert>
+          <!-- Vote Status Alert -->
           <v-alert
             v-if="alertVote"
             variant="outlined"
@@ -87,18 +101,17 @@
             {{ alertVote }}</v-alert
           >
         </div>
+        <!-- Option Creation Form -->
         <form-create-option
           v-if="currentTopic?.link && currentTopic?.status"
           :id="id.toString()"
           :options="options"
           :topic-state="currentTopic"
-          @update-options-data="updateOptionsData"
-          @reload-options="handleReloadOptions"
         />
       </div>
 
+      <!-- Options List -->
       <div class="right-area__list-wrapper">
-
         <div v-if="Boolean(options.length)" class="right-area__list">
           <option-card
             v-for="(option, index) in options"
@@ -121,16 +134,20 @@
           ></option-card>
         </div>
         <section v-else>
-          <p style="font-size: large;">No option yet!</p>
+          <p style="font-size: large">No option yet!</p>
         </section>
       </div>
     </v-sheet>
+
+    <!-- Loading Overlay -->
     <div>
       <v-overlay :model-value="showOverlay" class="align-center justify-center">
         <v-progress-circular color="primary" indeterminate size="64"></v-progress-circular>
       </v-overlay>
     </div>
   </v-container>
+
+  <!-- Vote List Dialog -->
   <v-dialog v-model="dialog" width="auto">
     <v-card>
       <v-card-title>Danh sách vote</v-card-title>
@@ -150,60 +167,84 @@
     </v-card>
   </v-dialog>
 </template>
+
 <script setup lang="ts">
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { useCollection, useDocument } from 'vuefire'
+import dayjs from 'dayjs'
+import { debounce } from 'lodash'
+
+import { ETopicTeam } from '@/core/constants/enum'
 import useCommon from '@/core/hooks/useCommon'
 import type { IOption } from '@/core/interfaces/model/option'
 import type { ITopic } from '@/core/interfaces/model/topic'
 import type { IUser } from '@/core/interfaces/model/user'
-import { db } from '@/plugins/firebase'
 import { getAccountById } from '@/services/account.service'
-import { getOptionsByTopicId, getRankByTopicId, voteOption } from '@/services/option.service'
+import {
+  getOptionsRefById,
+  handleMultipleVote,
+  handleSingleVote,
+  getRankByTopicId
+} from '@/services/option.service'
+import { getTopicRef, updateTopic } from '@/services/topic.service'
 import { useCommonStore } from '@/stores'
-import { doc, updateDoc } from 'firebase/firestore'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import { useDocument } from 'vuefire'
 import OptionCard from './OptionCard.vue'
-import { urlToHttpOptions } from 'url'
-import dayjs from 'dayjs'
+
+// Lazy load the form component
 const FormCreateOption = defineAsyncComponent(() => import('./FormCreateOption.vue'))
 
-/**
- * Common hook for all components
- * @store
- *  storeGetters,
- *  storeDispatch,
- * @Router
- *  getRouter,
- *  getQuery,
- *  getParams,
- *  handleRouter
- */
-/** end common hook */
-
+// Common hook for routing and store access
 const { getParams, handleRouter } = useCommon('useCommonStore')
 const { id } = getParams()
 const common = useCommonStore()
+
+// Component state
 const currentAccount = ref<IUser | null>(null)
-const currentTopic = useDocument<ITopic>(doc(db, 'topics', id.toString()))
-const options = ref<IOption[]>([])
-const topOptions = ref<IOption[]>([])
-const currentVoteOption = ref<number | null>(null)
-const currentVoteMultiOption = ref<number[]>([])
-const alertVote = ref<string>('')
-const alertVoteType = ref<string>('success')
 const showOverlay = ref<boolean>(false)
 const currentTime = ref(new Date().getTime())
 const listVoteBy = ref<IUser[]>([])
 const dialog = ref<boolean>(false)
+const alertVote = ref<string>('')
+const alertVoteType = ref<string>('success')
 
-//timeRemaining variable calculating the remaining time
+/** Computed Properties */
+const topicRef = computed(() => {
+  return getTopicRef(id.toString());
+})
+const currentTopic = useDocument<ITopic>(topicRef)
+// Get top 3 options by vote count
+const topOptionsRef = computed(() => {
+  return getRankByTopicId(id.toString())
+})
+const topOptions = useCollection<IOption>(topOptionsRef)
+// Get all options by topic id realtime
+const optionsRef = computed(() => {
+  return getOptionsRefById(id.toString())
+})
+const options = useCollection<IOption>(optionsRef)
+
+// Track user's voting state
+const voteState = computed(() => {
+  if (!currentAccount.value) return []
+
+  const votedIndices = options.value
+    .map((option, index) => ({
+      optionId: option.id,
+      index,
+      isVoted: option.voteBy.some((voter) => voter.id === currentAccount.value?.id)
+    }))
+    .filter((vote) => vote.isVoted)
+    .map((vote) => vote.index)
+  return votedIndices
+})
+
+// Calculate remaining time until topic deadline
 const timeRemaining = computed(() => {
   if (currentTopic.value?.date) {
     const difference =
       new Date((currentTopic.value?.date as any)?.seconds * 1000).getTime() - currentTime.value
     if (difference <= 0) {
       update()
-      // handleRouter.pushPath('/')
       return {
         days: 0,
         hours: 0,
@@ -217,46 +258,26 @@ const timeRemaining = computed(() => {
     const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
     const seconds = Math.floor((difference % (1000 * 60)) / 1000)
 
-    return {
-      days,
-      hours,
-      minutes,
-      seconds
-    }
+    return { days, hours, minutes, seconds }
   }
-  return {
-    days: -1,
-    hours: -1,
-    minutes: -1,
-    seconds: -1
-  }
+  return { days: -1, hours: -1, minutes: -1, seconds: -1 }
 })
 
-// countdown variable gets the time from timeRemaining and format it to show on screen
+// Format countdown display
 const countdown = computed(() => {
   const { days, hours, minutes, seconds } = timeRemaining.value
   const parts: string[] = []
 
-  if (days > 0) {
-    parts.push(`${days} ngày`)
-  }
-
-  if (hours > 0) {
-    parts.push(`${hours} giờ`)
-  }
-
-  if (minutes > 0) {
-    parts.push(`${minutes} phút`)
-  }
-
-  if (seconds > 0) {
-    parts.push(`${seconds} giây`)
-  }
+  if (days > 0) parts.push(`${days} ngày`)
+  if (hours > 0) parts.push(`${hours} giờ`)
+  if (minutes > 0) parts.push(`${minutes} phút`)
+  if (seconds > 0) parts.push(`${seconds} giây`)
 
   return parts.join(', ')
 })
 
-// update the topic's status when the deadline approaches
+/** Methods */
+// Update topic status when deadline is reached
 const update = async () => {
   const topicInfo = currentTopic.value ?? {
     id: '',
@@ -266,202 +287,84 @@ const update = async () => {
     status: true,
     link: true,
     option: true,
-    team: 'All'
+    team: ETopicTeam.ALL
   }
   topicInfo.status = false
-  // topicInfo.link = false
-  const topicRef = doc(db, 'topics', topicInfo.id)
+  updateTopic(topicInfo.id, topicInfo);
+}
+
+// Handle vote changes with debounce
+const handleChangeVote = debounce(async (optionIndex: number) => {
+  if (!currentTopic.value?.status) {
+    showAlert('Topic này đã đóng!', 'error')
+    return
+  }
+
   try {
-    await updateDoc(topicRef, topicInfo as object)
-  } catch (e) {
-    if (e instanceof Error) {
-      console.error(e.message)
+    showOverlay.value = true
+    const optionId = options.value[optionIndex].id
+
+    if (!currentAccount.value) {
+      throw new Error('User not authenticated')
     }
+
+    if (currentTopic.value?.option) {
+      await handleMultipleVote(optionId, currentAccount.value)
+    } else {
+      const previousOptionId =
+        voteState.value.length > 0 ? options.value[voteState.value[0]].id : null
+      await handleSingleVote(optionId, currentAccount.value, previousOptionId)
+    }
+  } catch (error) {
+    console.error('Vote error:', error)
+    showAlert('Cập nhật thất bại', 'error')
+  } finally {
+    showOverlay.value = false
   }
+}, 300)
+
+// Show temporary alert message
+const showAlert = (message: string, type: string) => {
+  alertVote.value = message
+  alertVoteType.value = type
+  setTimeout(() => {
+    alertVote.value = ''
+  }, 2000)
 }
 
-// Check is account vote the option
-const checkAccountVoteOption = (option: IOption, account: IUser) => {
-  for (const element of option.voteBy) {
-    if (element.id === account.id) {
-      return true
-    }
-  }
-  return false
+// Show vote list dialog
+const onClickSeeMore = (option: IOption) => {
+  listVoteBy.value = option.voteBy
+  dialog.value = true
 }
 
+// Component lifecycle hooks
 onMounted(async () => {
+  // Reset account if needed
   const isResetAccount = localStorage.getItem('isResetAccount')
   if (isResetAccount !== 'true') {
     localStorage.clear()
     localStorage.setItem('isResetAccount', 'true')
     handleRouter.pushPath('/')
   }
+
+  // Start countdown timer
   setInterval(() => {
     currentTime.value = new Date().getTime()
   }, 1000)
-  // get account Id in localstorage and fetch data from firebase
+
+  // Load user data
   const accountId = localStorage.getItem('account_info')
   if (!accountId) {
     handleRouter.pushPath('/')
     return
   }
-  // wait 0.5s for the options to load then add voted options
-  const topicData = await getOptionsByTopicId(id.toString())
-  const rankData = await getRankByTopicId(id.toString())
+
   const userData = await getAccountById(accountId!)
-
-  options.value = topicData.value as IOption[]
-  topOptions.value = rankData.value as IOption[]
-  
   currentAccount.value = userData
-
-  if (currentTopic.value?.option && userData) {
-    topicData.value.forEach((option, index) => {
-      checkAccountVoteOption(option, userData) && currentVoteMultiOption.value.push(index)
-    })
-  }
-  currentVoteOption.value = userData
-    ? topicData.value.findIndex((option) => checkAccountVoteOption(option, userData))
-    : null
 })
-
-// change vote option
-const handleChangeVote = (optionIndex: number) => {
-  if (!currentTopic.value?.status) {
-    alertVote.value = 'Topic này đã đóng!'
-    alertVoteType.value = 'error'
-    setTimeout(() => {
-      alertVote.value = ''
-    }, 2000)
-    return
-  }
-  showOverlay.value = !showOverlay.value
-  // handle vote multiple
-  if (currentTopic.value?.option) {
-    let isUnvote = -1
-    for (let i = 0; i < options.value[optionIndex].voteBy.length; i++) {
-      if (options.value[optionIndex].voteBy[i].id === currentAccount.value?.id) {
-        isUnvote = i
-        break
-      }
-    }
-
-    if (isUnvote !== -1) {
-      options.value[optionIndex].voteBy.splice(isUnvote, 1)
-      options.value[optionIndex].voteCount--
-      currentVoteMultiOption.value.splice(currentVoteMultiOption.value.indexOf(optionIndex), 1)
-    } else {
-      if (currentAccount.value) {
-        options.value[optionIndex].voteBy.push(currentAccount.value!)
-        options.value[optionIndex].voteCount++
-        currentVoteMultiOption.value.push(optionIndex)
-      }
-    }
-    handleSubmitForm()
-    return
-  }
-  // Handle vote 1
-  const accountIndex =
-    currentVoteOption?.value !== null && options?.value?.[currentVoteOption.value]?.voteBy?.length
-      ? options.value[currentVoteOption.value].voteBy.findIndex(
-          (account) => account.id === currentAccount.value?.id
-        )
-      : -1
-
-  if (accountIndex !== -1) {
-    options.value[currentVoteOption.value ?? 0].voteBy.splice(accountIndex, 1)
-    if (optionIndex === currentVoteOption.value) {
-      currentVoteOption.value = null
-      handleSubmitForm()
-      return
-    }
-  }
-
-  currentAccount.value && options.value[optionIndex].voteBy.push(currentAccount.value)
-  currentVoteOption.value = optionIndex
-  handleSubmitForm()
-}
-
-// Reload options list
-const handleReloadOptions = async () => {
-  const topicData = await getOptionsByTopicId(id.toString())
-  const rankData = await getRankByTopicId(id.toString())
-  setTimeout(() => {
-    options.value = topicData.value as IOption[]
-    topOptions.value = rankData.value as IOption[]
-  }, 100)
-}
-
-// Update data for option list
-const handleSubmitForm = async () => {
-  try {
-    const res = await voteOption(options.value)
-    if (res) {
-      showOverlay.value = !showOverlay.value
-    }
-  } catch (error) {
-    showOverlay.value = !showOverlay.value
-    alertVote.value = 'Cập nhật thất bại'
-    alertVoteType.value = 'error'
-  } finally {
-    setTimeout(() => {
-      alertVote.value = ''
-    }, 2000)
-    currentVoteMultiOption.value = []
-
-    setTimeout(() => {
-      if (currentTopic.value?.option && currentAccount.value) {
-        options.value.forEach((option, index) => {
-          checkAccountVoteOption(option, currentAccount.value!) &&
-            currentVoteMultiOption.value.push(index)
-        })
-      }
-      currentVoteOption.value = options.value.findIndex((option) =>
-        checkAccountVoteOption(option, currentAccount.value!)
-      )
-    }, 200)
-  }
-}
-
-// update option voteBy list
-const updateOptionsData = () => {
-  if (currentTopic.value?.option && currentAccount.value) {
-    options.value.forEach((option, index) => {
-      checkAccountVoteOption(option, currentAccount.value!) &&
-        currentVoteMultiOption.value.push(index)
-    })
-  } else {
-    currentVoteOption.value = options.value.findIndex((option) =>
-      checkAccountVoteOption(option, currentAccount.value!)
-    )
-  }
-}
-const onClickSeeMore = (option: IOption) => {
-  listVoteBy.value = option.voteBy
-  dialog.value = true
-}
 </script>
+
 <style scoped lang="scss">
 @import './styles.scss';
-#topic {
-  max-width: 1280px;
-  height: 100vh;
-  position: fixed;
-  top: 70px;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: row;
-  margin: 0 auto;
-  z-index: 0;
-  background-size: cover;
-  overflow-y: auto;
-}
-
-@media (width <= 1024px) {
-  #topic {
-    flex-direction: column;
-  }
-}
 </style>

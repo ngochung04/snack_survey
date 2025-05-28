@@ -1,3 +1,18 @@
+#topic {
+  max-width: 1280px;
+  height: 100vh;
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: row;
+  margin: 0 auto;
+  z-index: 0;
+  background-size: cover;
+  overflow-y: auto;
+}
+
 .border-top-violet {
   border-top: 10px solid #673ab7;
 }
@@ -84,5 +99,11 @@ h1 {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+}
+
+@media (width <= 1024px) {
+  #topic {
+    flex-direction: column;
   }
 }
