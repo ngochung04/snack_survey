@@ -1,13 +1,14 @@
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
-import { useCollection } from 'vuefire'
 import { db } from '@/plugins/firebase'
 import type { IUser } from '@/core/interfaces/model/user'
 
 /**
- * get all account document in fb
- * @return { Promise<IUser[]>}
+ * One-shot fetch of all accounts (for login/register suggestions).
  */
-export const getAccounts = useCollection<IUser>(collection(db, 'accounts'))
+export const fetchAccounts = async (): Promise<IUser[]> => {
+  const snapshot = await getDocs(collection(db, 'accounts'))
+  return snapshot.docs.map((d) => ({ ...d.data(), id: d.id }) as IUser)
+}
 
 /**
  * get one account by id

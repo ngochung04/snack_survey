@@ -107,7 +107,7 @@
         <div v-for="topic in searchedTopics" :key="topic.id">
           <UiCard
             variant="interactive"
-            class="!p-6"
+            class="!p-6 !overflow-visible"
             :class="
               isTopicOpen(topic) ? '!border-transparent animate-border-spin !border-[3px]' : ''
             "
@@ -132,7 +132,7 @@
                   <div
                     v-for="(opt, oi) in topicTopOptions[topic.id]"
                     :key="opt.id"
-                    class="theme-panel flex items-center gap-2 px-3 py-2 min-w-0 cursor-default max-w-[360px] flex-1"
+                    class="theme-panel !overflow-visible relative flex items-center gap-2 px-3 py-2 min-w-0 cursor-default max-w-[360px] flex-1"
                     :class="[
                       oi === 0 ? 'bg-retro-yellow/30' : '',
                       oi === 1 ? 'bg-stone-100' : '',
@@ -141,12 +141,12 @@
                   >
                     <div class="relative shrink-0">
                       <img
-                        :src="RANK_ICON[oi]"
-                        class="absolute -top-6 -left-5 w-10 h-10 z-10 drop-shadow-[1px_1px_0_rgba(28,25,23,0.6)]"
+                        :src="opt.thumbnail || DEFAULT_CARD_IMG"
+                        class="relative z-0 w-8 h-8 object-cover border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-[var(--radius-media)]"
                       />
                       <img
-                        :src="opt.thumbnail || DEFAULT_CARD_IMG"
-                        class="w-8 h-8 object-cover border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-[var(--radius-media)]"
+                        :src="RANK_ICON[oi]"
+                        class="absolute -top-5 -left-4 w-10 h-10 pointer-events-none drop-shadow-[1px_1px_0_rgba(28,25,23,0.6)]"
                       />
                     </div>
                     <span class="font-sans text-sm font-bold text-ink truncate">{{
@@ -169,6 +169,11 @@
               </span>
             </div>
           </UiCard>
+        </div>
+        <div v-if="hasMore" class="flex justify-center pt-2">
+          <UiButton variant="secondary" size="lg" :disabled="loadingMore" @click="loadMoreTopics">
+            {{ loadingMore ? 'Đang tải...' : 'Xem thêm' }}
+          </UiButton>
         </div>
       </div>
 
@@ -196,10 +201,10 @@
 
 <script setup lang="ts">
 import { onMounted, ref, reactive, watch, computed, onBeforeUnmount } from 'vue'
-import { getAccounts } from '@/services/account.service'
-import { getOpenTopicList, getCloseTopicList } from '@/services/topic.service'
+import { fetchAccounts } from '@/services/account.service'
+import { getAllTopicsForTeam, TOPIC_PAGE_SIZE } from '@/services/topic.service'
 import { debounce } from 'vue-debounce'
-import { getAllOptions } from '@/services/option.service'
+import { getOptionsByTopicIds } from '@/services/option.service'
 import { signIn, signUp, signOut as authSignOut } from '@/services/auth.service'
 import type { ITopic } from '@/core/interfaces/model/topic'
 import type { IOption } from '@/core/interfaces/model/option'
@@ -218,6 +223,7 @@ const error = ref<boolean>(false)
 const dialog = ref<boolean>(false)
 const message = ref<string>('')
 const loading = ref(false)
+const loadingMore = ref(false)
 const searchTerm = ref('')
 const mode = ref<'login' | 'register'>('login')
 const email = ref('')
@@ -230,6 +236,21 @@ const accountInfo: {
   team?: string
 } = reactive({ username: '', avatar: '', team: '' })
 const listVoteBy = ref<IUser[]>([])
+const hasMore = ref(false)
+const visibleCount = ref(TOPIC_PAGE_SIZE)
+const accounts = ref<IUser[]>([])
+
+const filteredTopics = computed(() => {
+  const term = removeDiacritics(searchTerm.value.trim())
+  if (!term) return topics.value
+  return topics.value.filter((topic) => removeDiacritics(topic.name.trim()).includes(term))
+})
+
+const refreshVisible = () => {
+  const list = filteredTopics.value
+  searchedTopics.value = list.slice(0, visibleCount.value)
+  hasMore.value = visibleCount.value < list.length
+}
 
 const errorClass = computed(() =>
   error.value && !message.value.includes('Vui lòng')
@@ -259,15 +280,29 @@ const topicTopOptions = computed(() => {
 
 const loadTopics = async (team: string | null) => {
   loading.value = true
+  visibleCount.value = TOPIC_PAGE_SIZE
   try {
-    const [openList, closeList] = await Promise.all([
-      getOpenTopicList(team),
-      getCloseTopicList(team)
-    ])
-    topics.value = [...openList, ...closeList]
-    getTopicOptions()
+    topics.value = await getAllTopicsForTeam(team)
+    refreshVisible()
+    await getTopicOptions()
   } finally {
     loading.value = false
+  }
+}
+
+const loadAccountsForSuggestions = async () => {
+  if (accounts.value.length) return
+  accounts.value = await fetchAccounts()
+}
+
+const loadMoreTopics = async () => {
+  if (!hasMore.value || loadingMore.value) return
+  loadingMore.value = true
+  try {
+    visibleCount.value += TOPIC_PAGE_SIZE
+    refreshVisible()
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -280,7 +315,7 @@ const removeDiacritics = (s: string) =>
 const suggestedAccounts = computed(() => {
   if (!username.value) return []
   const q = removeDiacritics(username.value)
-  return getAccounts.value
+  return accounts.value
     .filter((item: IUser) => item.username && removeDiacritics(item.username).includes(q))
     .slice(0, 8)
 })
@@ -392,15 +427,18 @@ onMounted(async () => {
     accountInfo.username = localStorage.getItem('account_username') ?? ''
     accountInfo.team = localStorage.getItem('account_team') ?? ''
     await loadTopics(localStorage.getItem('account_team'))
+  } else {
+    await loadAccountsForSuggestions()
   }
 })
 
-watch(topics, (newTopics) => {
-  searchedTopics.value = newTopics
+watch(show, (isLoginForm) => {
+  if (isLoginForm) loadAccountsForSuggestions()
 })
 
 const performSearch = () => {
-  searchedTopics.value = topics.value.filter((topic) => topic.name.includes(searchTerm.value))
+  visibleCount.value = TOPIC_PAGE_SIZE
+  refreshVisible()
 }
 const debouncedSearch = debounce(performSearch, 500)
 
@@ -411,15 +449,13 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', closeSuggestions)
 })
 
-const getTopicOptions = async () => {
-  const topicData = await getAllOptions()
-  options.value = topicData
-  topics.value.forEach((topic) => {
-    const result = options.value.filter((option) => option.topicId === topic.id)
+const attachVoteBy = (topicList: ITopic[], optionList: IOption[]) => {
+  topicList.forEach((topic) => {
+    const result = optionList.filter((option) => option.topicId === topic.id)
     const map: { [key: string]: IUser } = {}
-    const combinedArray = []
+    const combinedArray: IUser[] = []
     result.forEach((option) => {
-      (option.voteBy || []).forEach((obj) => {
+      ;(option.voteBy || []).forEach((obj) => {
         if (!map[obj?.id]) {
           map[obj?.id] = obj
         }
@@ -434,6 +470,12 @@ const getTopicOptions = async () => {
   })
 }
 
+const getTopicOptions = async () => {
+  const topicData = await getOptionsByTopicIds(topics.value.map((t) => t.id))
+  options.value = topicData
+  attachVoteBy(topics.value, topicData)
+}
+
 const goTopicVote = (id: string) => {
   handleRouter.pushName('topicVote', { params: { id: id } })
 }
@@ -443,6 +485,10 @@ const logout = async () => {
   localStorage.clear()
   localStorage.setItem('isResetAccount', 'true')
   topics.value = []
+  searchedTopics.value = []
+  hasMore.value = false
+  visibleCount.value = TOPIC_PAGE_SIZE
+  searchTerm.value = ''
   show.value = true
   email.value = ''
   password.value = ''

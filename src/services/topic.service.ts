@@ -4,6 +4,51 @@ import type { ITopic } from '@/core/interfaces/model/topic'
 import { ETopicTeam } from '@/core/constants/enum'
 const db = useFirestore()
 
+export const TOPIC_PAGE_SIZE = 5
+
+const matchesTeam = (topicTeam: unknown, team: string | null) =>
+  topicTeam == team || String(topicTeam).toUpperCase() === ETopicTeam.ALL
+
+const toMillis = (value: unknown): number => {
+  if (!value) return 0
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'object' && value !== null && 'toDate' in value) {
+    const d = (value as { toDate: () => Date }).toDate()
+    return d?.getTime?.() ?? 0
+  }
+  if (typeof value === 'object' && value !== null && 'seconds' in value) {
+    return Number((value as { seconds: number }).seconds) * 1000
+  }
+  return 0
+}
+
+const mapTopicDoc = (id: string, data: Record<string, unknown>): ITopic =>
+  ({
+    ...data,
+    id,
+    date: (data.date as { toDate?: () => Date })?.toDate?.() ?? data.date,
+    updatedAt: (data.updatedAt as { toDate?: () => Date })?.toDate?.() ?? data.updatedAt
+  }) as ITopic
+
+const sortByNewest = (a: ITopic, b: ITopic) =>
+  toMillis(b.updatedAt) - toMillis(a.updatedAt) || toMillis(b.date) - toMillis(a.date)
+
+/**
+ * Full team-scoped topic list (same visibility rules as legacy open/close lists).
+ * Team match is case-insensitive for ALL because Admin stores "All".
+ */
+export const getAllTopicsForTeam = async (team: string | null): Promise<ITopic[]> => {
+  const snapshot = await getDocs(collection(db, 'topics'))
+  const items: ITopic[] = []
+  snapshot.forEach((d) => {
+    const data = d.data()
+    if (matchesTeam(data.team, team)) {
+      items.push(mapTopicDoc(d.id, data))
+    }
+  })
+  return items.sort(sortByNewest)
+}
+
 /**
  * Get list topic data status open
  * @return {Promise<ITopic[]>}
@@ -42,12 +87,12 @@ export const getCloseTopicList = async (team: string | null): Promise<ITopic[]> 
   return openTopicList
 }
 
-export const getTopics = useCollection(
-  query(collection(db, 'topics'), orderBy('updatedAt', 'desc'))
-)
+/** Realtime topics list — call only from component setup (e.g. Admin). */
+export const useTopics = () =>
+  useCollection(query(collection(db, 'topics'), orderBy('updatedAt', 'desc')))
 
 export const getTopicRef = (topicId: string) => {
-  return doc(db, 'topics', topicId);
+  return doc(db, 'topics', topicId)
 }
 /** Update topic firebase data by id */
 export const updateTopic = async (topicId: string, topicInfo: ITopic) => {

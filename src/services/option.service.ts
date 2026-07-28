@@ -40,6 +40,27 @@ export const getRankByTopicId = (topicId: string) => {
   )
 }
 
+const FIRESTORE_IN_LIMIT = 30
+
+const mapOptionDoc = (d: { id: string; data: () => Record<string, unknown> }): IOption =>
+  ({ ...d.data(), id: d.id }) as IOption
+
+/**
+ * Options belonging to the given topic ids (chunked Firestore `in` queries).
+ */
+export const getOptionsByTopicIds = async (topicIds: string[]): Promise<IOption[]> => {
+  const uniqueIds = [...new Set(topicIds.filter(Boolean))]
+  if (!uniqueIds.length) return []
+
+  const results: IOption[] = []
+  for (let i = 0; i < uniqueIds.length; i += FIRESTORE_IN_LIMIT) {
+    const chunk = uniqueIds.slice(i, i + FIRESTORE_IN_LIMIT)
+    const snapshot = await getDocs(query(collection(db, 'options'), where('topicId', 'in', chunk)))
+    snapshot.docs.forEach((d) => results.push(mapOptionDoc(d)))
+  }
+  return results
+}
+
 /**
  * Get list all options
  * @param {}
@@ -48,7 +69,7 @@ export const getRankByTopicId = (topicId: string) => {
 export const getAllOptions = async (): Promise<IOption[]> => {
   const snapshot = await getDocs(query(collection(db, 'options')))
   if (snapshot.docs) {
-    const res = snapshot.docs.map((doc) => ({ ...doc.data() })) as IOption[]
+    const res = snapshot.docs.map((d) => mapOptionDoc(d)) as IOption[]
     return res
   } else {
     return []

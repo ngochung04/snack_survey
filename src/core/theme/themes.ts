@@ -16,7 +16,7 @@ export const THEMES: ThemeDefinition[] = [
   { id: 'stall', label: 'Stall Label' }
 ]
 
-export const DEFAULT_THEME: ThemeId = 'stall'
+export const DEFAULT_THEME: ThemeId = 'snack'
 
 export function isThemeId(value: unknown): value is ThemeId {
   return typeof value === 'string' && THEME_IDS.includes(value as ThemeId)

@@ -256,7 +256,7 @@ import { ref, watch, reactive, computed, defineAsyncComponent } from 'vue'
 import { UiButton, UiDialog, UiInput, UiToggle, UiAlert, UiRadio } from '@/components/ui'
 import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/plugins/firebase'
-import { getTopicById, getTopics } from '@/services/topic.service'
+import { getTopicById, useTopics } from '@/services/topic.service'
 import { getOptionsByTopicId } from '@/services/option.service'
 import { initOption, initTopic } from './Admin.state'
 import type { ITopic } from '@/core/interfaces/model/topic'
@@ -270,7 +270,7 @@ const ModalEditOption = defineAsyncComponent(() => import('./ModalEditOption.vue
 const ModalOptionLibrary = defineAsyncComponent(() => import('./ModalOptionLibrary.vue'))
 const ModalPickFromLibrary = defineAsyncComponent(() => import('./ModalPickFromLibrary.vue'))
 
-const topics = getTopics
+const topics = useTopics()
 const text = ref<string>('')
 const textBtn = ref<string>('Tạo mới')
 const topicId = ref<string>('')
