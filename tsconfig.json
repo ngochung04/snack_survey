@@ -2,12 +2,13 @@
   "extends": "@vue/tsconfig/tsconfig.web.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "target": "esnext",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "baseUrl": ".",
     "verbatimModuleSyntax": true,
+    "moduleResolution": "bundler",
+    "importsNotUsedAsValues": null,
+    "preserveValueImports": null,
     "paths": {
       "@/*": ["./src/*"]
     }

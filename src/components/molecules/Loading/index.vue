@@ -1,8 +1,4 @@
 <script setup lang="ts">
-/**
- * Component: <Loading />
- */
-
 defineProps({
   isLoading: {
     type: Boolean,
@@ -12,30 +8,9 @@ defineProps({
 </script>
 
 <template>
-  <div v-if="isLoading" class="base-loading">
-    <div class="loading-inner">Loading...</div>
+  <div v-if="isLoading" class="fixed inset-0 bg-ink/50 flex items-center justify-center z-50">
+    <div class="font-serif font-black text-3xl tracking-wider text-cream">
+      Loading...
+    </div>
   </div>
 </template>
-
-<style scoped lang="scss">
-/* Just demo. Custom your style loading */
-.base-loading {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  background-color: rgb(0 0 0 / 50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  .loading-inner {
-    font-weight: bold;
-    font-size: 30px;
-    letter-spacing: 2px;
-    opacity: 1;
-    z-index: 1;
-    color: #fff;
-  }
-}
-</style>

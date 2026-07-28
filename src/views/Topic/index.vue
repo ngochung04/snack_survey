@@ -1,171 +1,111 @@
 <template>
-  <v-container id="topic">
-    <!-- Left Area: Topic Details and Top 3 Options -->
-    <v-sheet max-width="638" rounded width="100%" class="mx-auto left-area">
-      <!-- Topic Information Section -->
-      <div class="mx-auto left-area" style="width: 100% !important; max-width: 400px">
-        <h1 class="text-white text-h4 mb-2">{{ currentTopic?.name }}</h1>
-        <p class="text-white text-body-1 mb-1 text-break">{{ currentTopic?.description }}</p>
-        <p class="text-white text-body-1 mb-8">
-          Thời hạn:
-          {{
-            dayjs(new Date((currentTopic?.date as any)?.seconds * 1000)).format(
-              'DD/MM/YYYY, HH:MM:ss'
-            )
-          }}
-        </p>
-        <!-- Countdown Timer Display -->
-        <p v-if="Boolean(countdown)" class="text-white font-weight-medium mb-4">
-          <v-chip color="primary" label class="chip-with-icon">
-            <v-icon icon="mdi-clock-time-eight-outline"></v-icon>
-          </v-chip>
-          <span class="text-red ml-1">{{ countdown }}</span>
-        </p>
-      </div>
-
-      <!-- Top 3 Options Display -->
-      <div class="left-area__rank">
-        <!-- First Place Option -->
-        <option-card
-          v-if="Boolean(topOptions?.[0])"
-          :index="0"
-          :is-rank-card="true"
-          :option="topOptions[0]"
-          :current-account="currentAccount"
-          card-style="
-              position: relative;
-              padding: 8px;
-              width: 220px;
-              height: 240px;
-              min-height: 240px;
-              max-height: 240px;
-              scale: 1.2;"
-        ></option-card>
-        <!-- Second and Third Place Options -->
-        <div class="left-area__rank--bottom">
-          <option-card
-            v-if="Boolean(topOptions?.[1])"
-            :index="1"
-            :is-rank-card="true"
-            :option="topOptions[1]"
-            :current-account="currentAccount"
-            card-style="position: relative;
-              padding: 8px;
-              width: 220px;
-              height: 240px;
-              min-height: 240px;
-              max-height: 240px;"
-          ></option-card>
-          <option-card
-            v-if="Boolean(topOptions?.[2])"
-            :index="2"
-            :is-rank-card="true"
-            :option="topOptions[2]"
-            :current-account="currentAccount"
-            card-style="position: relative;
-              padding: 8px;
-              width: 220px;
-              height: 240px;
-              min-height: 240px;
-              max-height: 240px;"
-          ></option-card>
-        </div>
-      </div>
-    </v-sheet>
-
-    <!-- Right Area: Options List and Voting -->
-    <v-sheet max-width="638" rounded="lg" width="100%" heigth="100%" class="mx-auto right-area">
-      <!-- Alert Messages and Option Creation Form -->
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
-        <div style="flex: 1">
-          <!-- Topic Closed Alert -->
-          <v-alert
-            v-if="!common.loading && !currentTopic?.status && !alertVote"
-            variant="outlined"
-            type="warning"
-            class="w-100 pt-2 pb-2"
-            style="background-color: white"
-            border="start"
-          >
-            Topic này đã đóng, vui lòng trở lại sau
-          </v-alert>
-          <!-- Vote Status Alert -->
-          <v-alert
-            v-if="alertVote"
-            variant="outlined"
-            :type="alertVoteType"
-            class="w-100 pt-2 pb-2"
-            style="background-color: white"
-            border="start"
-          >
-            {{ alertVote }}</v-alert
-          >
-        </div>
-        <!-- Option Creation Form -->
-        <form-create-option
-          v-if="currentTopic?.link && currentTopic?.status"
-          :id="id.toString()"
-          :options="options"
-          :topic-state="currentTopic"
-        />
-      </div>
-
-      <!-- Options List -->
-      <div class="right-area__list-wrapper">
-        <div v-if="Boolean(options.length)" class="right-area__list">
-          <option-card
-            v-for="(option, index) in options"
-            :key="option.id"
-            :index="index"
-            :is-rank-card="false"
-            :option="option"
-            :current-account="currentAccount"
-            card-style="
-              position: relative;
-              padding: 4px;
-              width: calc(100% / 3 - 8px);
-              max-width: 200px;
-              height: 232px;
-              min-height: 232px;
-              max-height: 232px;
-              "
-            @on-click-see-more="onClickSeeMore(option)"
-            @handle-change-vote="handleChangeVote(index)"
-          ></option-card>
-        </div>
-        <section v-else>
-          <p style="font-size: large">No option yet!</p>
-        </section>
-      </div>
-    </v-sheet>
-
-    <!-- Loading Overlay -->
-    <div>
-      <v-overlay :model-value="showOverlay" class="align-center justify-center">
-        <v-progress-circular color="primary" indeterminate size="64"></v-progress-circular>
-      </v-overlay>
+  <div class="min-h-screen flex flex-col px-6 py-8">
+    <div class="w-full max-w-6xl mx-auto mb-4">
+      <UiButton variant="secondary" size="sm" shape="rounded" @click="goHome">
+        <i class="mdi mdi-arrow-left"></i> Quay lại
+      </UiButton>
     </div>
-  </v-container>
-
-  <!-- Vote List Dialog -->
-  <v-dialog v-model="dialog" width="auto">
-    <v-card>
-      <v-card-title>Danh sách vote</v-card-title>
-      <v-divider></v-divider>
-      <v-card-text max-height="300px" class="pa-3">
-        <div v-for="user in listVoteBy" :key="user.username" class="mr-1">
-          <div class="mt-1">
-            <v-avatar color="secondary" class="m-1" size="30">
-              <v-img v-if="user.avatar" :src="user.avatar" :alt="user.username"></v-img>
-              <span v-else>{{ user.username.charAt(0).toLocaleUpperCase() }}</span>
-              <v-tooltip activator="parent" location="top">{{ user.username }}</v-tooltip>
-            </v-avatar>
-            <span class="ml-1">{{ user.username }}</span>
+    <div class="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-6">
+      <!-- LEFT: Sidebar -->
+      <div class="w-full lg:w-1/3">
+        <!-- Topic Info -->
+        <div class="bg-surface border-[2px] border-ink rounded-2xl shadow-neo-md p-6 mb-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span
+              v-if="currentTopic"
+              class="font-mono font-black text-[10px] uppercase tracking-[.08em] border-[2px] border-ink rounded-full px-2.5 py-0.5"
+              :class="currentTopic?.status ? 'bg-sage text-white' : 'bg-retro-pink text-ink'"
+            >
+              {{ currentTopic?.status ? 'Mở' : 'Đóng' }}
+            </span>
+          </div>
+          <h1 class="font-serif font-black text-2xl text-ink mb-1">{{ currentTopic?.name }}</h1>
+          <p class="font-sans text-sm text-muted mb-4">{{ currentTopic?.description }}</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="font-mono text-[10px] font-bold text-muted border-[2px] border-ink rounded-full px-3 py-1.5 inline-flex items-center gap-1.5">
+              <i class="mdi mdi-calendar"></i>
+              {{ currentTopic?.date ? dayjs(new Date((currentTopic?.date as any)?.seconds * 1000)).format('DD/MM/YYYY') : '---' }}
+            </div>
+            <div v-if="Boolean(countdown)" class="font-mono text-[10px] font-bold text-terracotta border-[2px] border-ink rounded-full px-3 py-1.5 inline-flex items-center gap-1.5">
+              <i class="mdi mdi-clock-time-eight-outline"></i> Còn {{ countdown }}
+            </div>
           </div>
         </div>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+
+        <!-- Ranking List -->
+        <div v-if="topOptions.length" class="bg-surface border-[2px] border-ink rounded-2xl shadow-neo-md p-5">
+          <h4 class="font-sans font-black text-sm uppercase tracking-[.1em] text-muted mb-4">🏆 TOP</h4>
+          <div class="space-y-3">
+            <div
+              v-for="(opt, oi) in topOptions.slice(0, 3)"
+              :key="opt.id"
+              class="relative flex items-center gap-3 border-[2px] border-ink rounded-xl px-4 py-3"
+              :class="[oi === 0 ? 'bg-retro-yellow/30' : '', oi === 1 ? 'bg-stone-100' : '', oi === 2 ? 'bg-amber-50/60' : '']"
+            >
+              <img :src="RANK_ICON[oi]" class="absolute -top-0 -left-0 z-20 w-10 h-10 shrink-0" />
+              <div class="relative shrink-0">
+                <img :src="opt.thumbnail || DEFAULT_CARD_IMG" class="w-12 h-12 rounded-xl object-cover border-[2px] border-ink" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-sans text-base font-bold text-ink truncate">{{ opt.title }}</p>
+                <p class="font-mono text-xs text-muted">{{ opt.voteBy?.length || 0 }} người vote</p>
+              </div>
+              <span class="font-mono text-sm font-black text-ink border-[2px] border-ink rounded-full px-3 py-1 bg-retro-yellow shadow-neo-sm shrink-0">{{ opt.voteBy?.length || 0 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Options -->
+      <div class="flex-1 min-w-0">
+        <!-- Alerts -->
+        <div class="flex items-center gap-2 mb-4">
+          <div class="flex-1">
+            <UiAlert v-if="!common.loading && !currentTopic?.status && !alertVote" type="warning" message="Topic này đã đóng, vui lòng trở lại sau" />
+            <UiAlert v-if="alertVote" :type="(alertVoteType as 'success' | 'error')" :message="alertVote" />
+          </div>
+          <form-create-option v-if="currentTopic?.link && currentTopic?.status" :id="id.toString()" :options="options" :topic-state="currentTopic" />
+        </div>
+
+        <!-- Options Grid -->
+        <div class="bg-surface border-[2px] border-ink rounded-2xl shadow-neo-md p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="font-mono font-black text-[10px] uppercase tracking-[.1em] text-muted">Tất cả options ({{ options.length }})</h4>
+          </div>
+          <div v-if="options.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <option-card
+              v-for="(option, index) in options"
+              :key="option.id"
+              :index="index"
+              :option="option"
+              :current-account="currentAccount"
+              :rank="option.id ? optionRankMap[option.id] ?? null : null"
+              @on-click-see-more="onClickSeeMore(option)"
+              @handle-change-vote="handleChangeVote(index)"
+            />
+          </div>
+          <section v-else>
+            <p class="font-sans text-base text-muted text-center py-8">Chưa có option nào</p>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div v-if="showOverlay" class="fixed inset-0 bg-ink/40 z-40 flex items-center justify-center">
+      <div class="w-8 h-8 border-[2px] border-ink border-t-terracotta rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Vote List Dialog -->
+    <UiDialog v-model="dialog" title="Danh sách vote">
+      <div class="max-h-[300px] overflow-y-auto space-y-2">
+        <div v-for="user in listVoteBy" :key="user.username" class="flex items-center gap-2">
+          <UiAvatar :src="user.avatar" :fallback="user.username" size="sm" />
+          <span class="font-sans text-sm text-ink">{{ user.username }}</span>
+        </div>
+      </div>
+    </UiDialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -173,7 +113,9 @@ import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { useCollection, useDocument } from 'vuefire'
 import dayjs from 'dayjs'
 import { debounce } from 'lodash'
+import { RANK_ICON, DEFAULT_CARD_IMG } from '@/core/constants/app'
 
+import { UiAlert, UiAvatar, UiButton, UiDialog } from '@/components/ui'
 import { ETopicTeam } from '@/core/constants/enum'
 import useCommon from '@/core/hooks/useCommon'
 import type { IOption } from '@/core/interfaces/model/option'
@@ -190,15 +132,14 @@ import { getTopicRef, updateTopic } from '@/services/topic.service'
 import { useCommonStore } from '@/stores'
 import OptionCard from './OptionCard.vue'
 
-// Lazy load the form component
 const FormCreateOption = defineAsyncComponent(() => import('./FormCreateOption.vue'))
 
-// Common hook for routing and store access
 const { getParams, handleRouter } = useCommon('useCommonStore')
 const { id } = getParams()
 const common = useCommonStore()
 
-// Component state
+const goHome = () => handleRouter.pushName('home', {})
+
 const currentAccount = ref<IUser | null>(null)
 const showOverlay = ref<boolean>(false)
 const currentTime = ref(new Date().getTime())
@@ -207,164 +148,94 @@ const dialog = ref<boolean>(false)
 const alertVote = ref<string>('')
 const alertVoteType = ref<string>('success')
 
-/** Computed Properties */
-const topicRef = computed(() => {
-  return getTopicRef(id.toString());
-})
+const topicRef = computed(() => getTopicRef(id.toString()))
 const currentTopic = useDocument<ITopic>(topicRef)
-// Get top 3 options by vote count
-const topOptionsRef = computed(() => {
-  return getRankByTopicId(id.toString())
-})
+const topOptionsRef = computed(() => getRankByTopicId(id.toString()))
 const topOptions = useCollection<IOption>(topOptionsRef)
-// Get all options by topic id realtime
-const optionsRef = computed(() => {
-  return getOptionsRefById(id.toString())
-})
+const optionsRef = computed(() => getOptionsRefById(id.toString()))
 const options = useCollection<IOption>(optionsRef)
 
-// Track user's voting state
-const voteState = computed(() => {
-  if (!currentAccount.value) return []
-
-  const votedIndices = options.value
-    .map((option, index) => ({
-      optionId: option.id,
-      index,
-      isVoted: option.voteBy.some((voter) => voter.id === currentAccount.value?.id)
-    }))
-    .filter((vote) => vote.isVoted)
-    .map((vote) => vote.index)
-  return votedIndices
+const optionRankMap = computed(() => {
+  const map: Record<string, number> = {}
+  const sorted = [...options.value].sort((a, b) => (b.voteCount ?? 0) - (a.voteCount ?? 0))
+  sorted.slice(0, 3).forEach((opt, i) => { if (opt.id) map[opt.id] = i })
+  return map
 })
 
-// Calculate remaining time until topic deadline
+const voteState = computed(() => {
+  if (!currentAccount.value) return []
+  return options.value
+    .map((option, index) => ({ optionId: option.id, index, isVoted: option.voteBy.some((voter) => voter.id === currentAccount.value?.id) }))
+    .filter((vote) => vote.isVoted)
+    .map((vote) => vote.index)
+})
+
 const timeRemaining = computed(() => {
   if (currentTopic.value?.date) {
-    const difference =
-      new Date((currentTopic.value?.date as any)?.seconds * 1000).getTime() - currentTime.value
-    if (difference <= 0) {
-      update()
-      return {
-        days: 0,
-        hours: 0,
-        minutes: 0,
-        seconds: 0
-      }
+    const difference = new Date((currentTopic.value?.date as any)?.seconds * 1000).getTime() - currentTime.value
+    if (difference <= 0) { update(); return { days: 0, hours: 0, minutes: 0, seconds: 0 } }
+    return {
+      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((difference % (1000 * 60)) / 1000)
     }
-
-    const days = Math.floor(difference / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
-    const seconds = Math.floor((difference % (1000 * 60)) / 1000)
-
-    return { days, hours, minutes, seconds }
   }
   return { days: -1, hours: -1, minutes: -1, seconds: -1 }
 })
 
-// Format countdown display
 const countdown = computed(() => {
   const { days, hours, minutes, seconds } = timeRemaining.value
   const parts: string[] = []
-
   if (days > 0) parts.push(`${days} ngày`)
   if (hours > 0) parts.push(`${hours} giờ`)
   if (minutes > 0) parts.push(`${minutes} phút`)
   if (seconds > 0) parts.push(`${seconds} giây`)
-
   return parts.join(', ')
 })
 
-/** Methods */
-// Update topic status when deadline is reached
 const update = async () => {
-  const topicInfo = currentTopic.value ?? {
-    id: '',
-    name: '',
-    description: '',
-    date: new Date(),
-    status: true,
-    link: true,
-    option: true,
-    team: ETopicTeam.ALL
-  }
+  const topicInfo = currentTopic.value ?? { id: '', name: '', description: '', date: new Date(), status: true, link: true, option: true, team: ETopicTeam.ALL }
   topicInfo.status = false
-  updateTopic(topicInfo.id, topicInfo);
+  updateTopic(topicInfo.id, topicInfo)
 }
 
-// Handle vote changes with debounce
 const handleChangeVote = debounce(async (optionIndex: number) => {
-  if (!currentTopic.value?.status) {
-    showAlert('Topic này đã đóng!', 'error')
-    return
-  }
-
+  if (!currentTopic.value?.status) { showAlert('Topic này đã đóng!', 'error'); return }
   try {
     showOverlay.value = true
     const optionId = options.value[optionIndex].id
-
-    if (!currentAccount.value) {
-      throw new Error('User not authenticated')
-    }
-
-    if (currentTopic.value?.option) {
-      await handleMultipleVote(optionId, currentAccount.value)
-    } else {
-      const previousOptionId =
-        voteState.value.length > 0 ? options.value[voteState.value[0]].id : null
+    if (!currentAccount.value) throw new Error('User not authenticated')
+    if (currentTopic.value?.option) await handleMultipleVote(optionId, currentAccount.value)
+    else {
+      const previousOptionId = voteState.value.length > 0 ? options.value[voteState.value[0]].id : null
       await handleSingleVote(optionId, currentAccount.value, previousOptionId)
     }
-  } catch (error) {
-    console.error('Vote error:', error)
-    showAlert('Cập nhật thất bại', 'error')
-  } finally {
-    showOverlay.value = false
-  }
+  } catch (error) { console.error('Vote error:', error); showAlert('Cập nhật thất bại', 'error')
+  } finally { showOverlay.value = false }
 }, 300)
 
-// Show temporary alert message
 const showAlert = (message: string, type: string) => {
   alertVote.value = message
   alertVoteType.value = type
-  setTimeout(() => {
-    alertVote.value = ''
-  }, 2000)
+  setTimeout(() => { alertVote.value = '' }, 2000)
 }
 
-// Show vote list dialog
 const onClickSeeMore = (option: IOption) => {
   listVoteBy.value = option.voteBy
   dialog.value = true
 }
 
-// Component lifecycle hooks
 onMounted(async () => {
-  // Reset account if needed
   const isResetAccount = localStorage.getItem('isResetAccount')
   if (isResetAccount !== 'true') {
     localStorage.clear()
     localStorage.setItem('isResetAccount', 'true')
     handleRouter.pushPath('/')
   }
-
-  // Start countdown timer
-  setInterval(() => {
-    currentTime.value = new Date().getTime()
-  }, 1000)
-
-  // Load user data
+  setInterval(() => { currentTime.value = new Date().getTime() }, 1000)
   const accountId = localStorage.getItem('account_info')
-  if (!accountId) {
-    handleRouter.pushPath('/')
-    return
-  }
-
-  const userData = await getAccountById(accountId!)
-  currentAccount.value = userData
+  if (!accountId) { handleRouter.pushPath('/'); return }
+  currentAccount.value = await getAccountById(accountId!)
 })
 </script>
-
-<style scoped lang="scss">
-@import './styles.scss';
-</style>

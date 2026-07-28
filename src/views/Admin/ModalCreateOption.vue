@@ -1,67 +1,38 @@
 <template>
   <!-- Modal create option for topic -->
-  <v-dialog v-model="dialogVisible" persistent max-width="400">
-    <v-card class="pb-4">
-      <v-card-text>
-        <p class="font-weight-black text-center">Option</p>
-        <v-form @submit.prevent>
-          <v-text-field
-            v-if="props.topicState.data && checkTitleRequired(props.topicState.data)"
-            v-model="optionFormData.title"
-            label="Tiêu đề"
-            :rules="titleRules"
-          ></v-text-field>
-          <v-text-field v-else v-model="optionFormData.title" label="Tiêu đề"></v-text-field>
+  <UiDialog v-model="dialogVisible" title="Option">
+    <form @submit.prevent>
+      <UiInput
+        v-if="props.topicState.data && checkTitleRequired(props.topicState.data)"
+        v-model="optionFormData.title"
+        label="Tiêu đề"
+      />
+      <UiInput v-else v-model="optionFormData.title" label="Tiêu đề" />
 
-          <v-text-field
-            v-if="props.topicState.data && checkLinkRequired(props.topicState.data)"
-            v-model="optionFormData.link"
-            label="Link"
-            :rules="linkRules"
-          ></v-text-field>
-          <v-text-field v-else v-model="optionFormData.link" label="Link"></v-text-field>
-          <v-row>
-            <v-col>
-              <v-btn
-                type="submit"
-                block
-                class="mt-2 bg-red-darken-2"
-                @click="handleClose"
-                variant="elevated"
-              >
-                Đóng</v-btn
-              >
-            </v-col>
-            <v-col>
-              <v-btn
-                type="submit"
-                block
-                class="mt-2 bg-blue-darken-2"
-                @click="createOption"
-                variant="elevated"
-              >
-                Tạo mới</v-btn
-              >
-            </v-col>
-          </v-row>
-        </v-form>
-        <v-alert
-          v-if="message"
-          border="start"
-          variant="tonal"
-          closable
-          :color="hasError ? ENotificationColor.ERROR : ENotificationColor.SUCCESS"
-          class="mt-2"
-        >
-          {{ message }}</v-alert
-        >
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+      <UiInput
+        v-if="props.topicState.data && checkLinkRequired(props.topicState.data)"
+        v-model="optionFormData.link"
+        label="Link"
+      />
+      <UiInput v-else v-model="optionFormData.link"  class="mt-4" label="Link" />
+
+      <div class="flex gap-4 mt-4">
+        <UiButton type="submit" block variant="secondary" @click="handleClose">Đóng</UiButton>
+        <UiButton type="submit" block variant="primary" @click="createOption">Tạo mới</UiButton>
+      </div>
+    </form>
+    <UiAlert
+      v-if="message"
+      class="mt-2"
+      :type="hasError ? 'error' : 'success'"
+      :message="message"
+    />
+  </UiDialog>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { UiButton, UiDialog, UiInput, UiAlert } from '@/components/ui'
 import { initOption } from './Admin.state'
 import {
   handleValidateAddOption,
@@ -142,4 +113,3 @@ const createOption = async () => {
 }
 </script>
 
-<style scoped></style>
