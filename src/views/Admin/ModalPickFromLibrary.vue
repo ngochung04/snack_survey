@@ -16,7 +16,7 @@
         />
         <img
           :src="item.thumbnail || DEFAULT_CARD_IMG"
-          class="w-12 h-12 rounded-xl object-cover border-[2px] border-ink shrink-0"
+          class="w-12 h-12 object-cover border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-[var(--radius-media)] shrink-0"
         />
         <div class="flex-1 min-w-0">
           <p class="font-sans text-sm font-bold text-ink truncate">{{ item.title || '(No title)' }}</p>

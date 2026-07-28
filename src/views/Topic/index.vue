@@ -9,11 +9,11 @@
       <!-- LEFT: Sidebar -->
       <div class="w-full lg:w-1/3">
         <!-- Topic Info -->
-        <div class="bg-surface border-[2px] border-ink rounded-2xl shadow-neo-md p-6 mb-4">
+        <div class="theme-panel-md bg-surface p-6 mb-4">
           <div class="flex items-center gap-2 mb-2">
             <span
               v-if="currentTopic"
-              class="font-mono font-black text-[10px] uppercase tracking-[.08em] border-[2px] border-ink rounded-full px-2.5 py-0.5"
+              class="theme-chip text-[10px] uppercase px-2.5 py-0.5"
               :class="currentTopic?.status ? 'bg-sage text-white' : 'bg-retro-pink text-ink'"
             >
               {{ currentTopic?.status ? 'Mở' : 'Đóng' }}
@@ -22,35 +22,35 @@
           <h1 class="font-serif font-black text-2xl text-ink mb-1">{{ currentTopic?.name }}</h1>
           <p class="font-sans text-sm text-muted mb-4">{{ currentTopic?.description }}</p>
           <div class="flex flex-wrap items-center gap-3">
-            <div class="font-mono text-[10px] font-bold text-muted border-[2px] border-ink rounded-full px-3 py-1.5 inline-flex items-center gap-1.5">
+            <div class="theme-chip text-[10px] font-bold text-muted px-3 py-1.5 inline-flex items-center gap-1.5">
               <i class="mdi mdi-calendar"></i>
               {{ currentTopic?.date ? dayjs(new Date((currentTopic?.date as any)?.seconds * 1000)).format('DD/MM/YYYY') : '---' }}
             </div>
-            <div v-if="Boolean(countdown)" class="font-mono text-[10px] font-bold text-terracotta border-[2px] border-ink rounded-full px-3 py-1.5 inline-flex items-center gap-1.5">
+            <div v-if="Boolean(countdown)" class="theme-chip text-[10px] font-bold text-terracotta px-3 py-1.5 inline-flex items-center gap-1.5">
               <i class="mdi mdi-clock-time-eight-outline"></i> Còn {{ countdown }}
             </div>
           </div>
         </div>
 
         <!-- Ranking List -->
-        <div v-if="topOptions.length" class="bg-surface border-[2px] border-ink rounded-2xl shadow-neo-md p-5">
+        <div v-if="topOptions.length" class="theme-panel-md bg-surface p-5">
           <h4 class="font-sans font-black text-sm uppercase tracking-[.1em] text-muted mb-4">🏆 TOP</h4>
           <div class="space-y-3">
             <div
               v-for="(opt, oi) in topOptions.slice(0, 3)"
               :key="opt.id"
-              class="relative flex items-center gap-3 border-[2px] border-ink rounded-xl px-4 py-3"
+              class="theme-panel relative flex items-center gap-3 px-4 py-3"
               :class="[oi === 0 ? 'bg-retro-yellow/30' : '', oi === 1 ? 'bg-stone-100' : '', oi === 2 ? 'bg-amber-50/60' : '']"
             >
               <img :src="RANK_ICON[oi]" class="absolute -top-0 -left-0 z-20 w-10 h-10 shrink-0" />
               <div class="relative shrink-0">
-                <img :src="opt.thumbnail || DEFAULT_CARD_IMG" class="w-12 h-12 rounded-xl object-cover border-[2px] border-ink" />
+                <img :src="opt.thumbnail || DEFAULT_CARD_IMG" class="w-12 h-12 object-cover border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-[var(--radius-media)]" />
               </div>
               <div class="flex-1 min-w-0">
                 <p class="font-sans text-base font-bold text-ink truncate">{{ opt.title }}</p>
                 <p class="font-mono text-xs text-muted">{{ opt.voteBy?.length || 0 }} người vote</p>
               </div>
-              <span class="font-mono text-sm font-black text-ink border-[2px] border-ink rounded-full px-3 py-1 bg-retro-yellow shadow-neo-sm shrink-0">{{ opt.voteBy?.length || 0 }}</span>
+              <span class="theme-chip text-sm font-black text-ink px-3 py-1 bg-retro-yellow !shadow-[var(--elev-0)] shrink-0">{{ opt.voteBy?.length || 0 }}</span>
             </div>
           </div>
         </div>
@@ -68,9 +68,9 @@
         </div>
 
         <!-- Options Grid -->
-        <div class="bg-surface border-[2px] border-ink rounded-2xl shadow-neo-md p-6">
+        <div class="theme-panel-md bg-surface p-6">
           <div class="flex items-center justify-between mb-4">
-            <h4 class="font-mono font-black text-[10px] uppercase tracking-[.1em] text-muted">Tất cả options ({{ options.length }})</h4>
+            <h4 class="theme-label text-muted">Tất cả options ({{ options.length }})</h4>
           </div>
           <div v-if="options.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <option-card

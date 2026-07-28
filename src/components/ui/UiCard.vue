@@ -8,13 +8,11 @@ withDefaults(defineProps<{
 
 <template>
   <div
-    class="border-[2px] border-ink rounded-2xl p-5 transition-[transform,box-shadow] duration-75 relative overflow-hidden"
+    class="theme-panel p-5 transition-[transform,box-shadow] duration-100 relative"
     :class="[
-      variant === 'default' && 'bg-surface shadow-neo',
-      variant === 'dot' && 'bg-surface shadow-neo',
-      variant === 'elevatedDot' && 'bg-surface shadow-neo-lg',
-      variant === 'solid' && 'bg-cream shadow-neo',
-      variant === 'interactive' && 'bg-surface shadow-neo hover:translate-x-[1px] hover:translate-y-[1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer'
+      variant === 'solid' && '!bg-cream',
+      variant === 'elevatedDot' && 'theme-panel-md !shadow-[var(--elev-3)]',
+      variant === 'interactive' && 'cursor-pointer hover:[transform:var(--interactive-hover)] active:[transform:var(--interactive-active)] active:[box-shadow:var(--press-active-shadow)]'
     ]"
   >
     <slot />

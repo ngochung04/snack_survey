@@ -25,7 +25,7 @@ const onInput = (e: Event) => {
 
 <template>
   <div>
-    <label v-if="label" class="block font-mono font-black text-[10px] uppercase tracking-[.1em] text-ink mb-1.5">
+    <label v-if="label" class="theme-label block text-ink mb-1.5">
       {{ label }}
     </label>
     <textarea
@@ -33,11 +33,11 @@ const onInput = (e: Event) => {
       :placeholder="placeholder"
       :value="modelValue"
       @input="onInput"
-      class="w-full font-sans text-sm text-ink bg-surface border-[2px] border-ink rounded-xl px-4 py-2.5 outline-none transition-shadow duration-100 placeholder:text-subtle min-h-[80px] resize-vertical"
+      class="theme-control w-full font-sans text-sm text-ink px-4 py-2.5 outline-none transition-shadow duration-100 placeholder:text-subtle min-h-[80px] resize-vertical"
       :class="[
-        state === 'default' && 'shadow-neo focus:shadow-neo-md',
-        state === 'valid' && 'border-sage shadow-[2px_2px_0_0_rgba(129,178,154,0.8)] focus:shadow-[3px_3px_0_0_rgba(129,178,154,0.8)]',
-        state === 'error' && 'border-terracotta shadow-[2px_2px_0_0_rgba(224,122,95,0.8)] focus:shadow-[3px_3px_0_0_rgba(224,122,95,0.8)]'
+        state === 'default' && 'focus:[box-shadow:var(--elev-2)]',
+        state === 'valid' && '!border-sage focus:[box-shadow:var(--elev-2)]',
+        state === 'error' && '!border-terracotta focus:[box-shadow:var(--elev-2)]'
       ]"
     />
     <input
@@ -46,12 +46,12 @@ const onInput = (e: Event) => {
       :placeholder="placeholder"
       :value="modelValue"
       @input="onInput"
-      class="w-full font-sans text-sm text-ink bg-surface border-[2px] border-ink rounded-xl px-4 outline-none transition-shadow duration-100 placeholder:text-subtle"
+      class="theme-control w-full font-sans text-sm text-ink px-4 outline-none transition-shadow duration-100 placeholder:text-subtle"
       :class="[
         compact ? 'py-1.5' : 'py-2.5',
-        state === 'default' && 'shadow-neo focus:shadow-neo-md',
-        state === 'valid' && 'border-sage shadow-[2px_2px_0_0_rgba(129,178,154,0.8)] focus:shadow-[3px_3px_0_0_rgba(129,178,154,0.8)]',
-        state === 'error' && 'border-terracotta shadow-[2px_2px_0_0_rgba(224,122,95,0.8)] focus:shadow-[3px_3px_0_0_rgba(224,122,95,0.8)]'
+        state === 'default' && 'focus:[box-shadow:var(--elev-2)]',
+        state === 'valid' && '!border-sage focus:[box-shadow:var(--elev-2)]',
+        state === 'error' && '!border-terracotta focus:[box-shadow:var(--elev-2)]'
       ]"
     />
   </div>

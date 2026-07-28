@@ -10,7 +10,7 @@ withDefaults(defineProps<{
 
 <template>
   <span
-    class="inline-flex items-center gap-1 font-mono font-black text-[10px] uppercase tracking-[.08em] border-[2px] border-ink rounded-full px-2.5 py-0.5"
+    class="theme-chip inline-flex items-center gap-1 text-[10px] uppercase px-2.5 py-0.5"
     :class="[
       color === 'terracotta' && 'bg-terracotta text-ink',
       color === 'sage' && 'bg-sage text-ink',

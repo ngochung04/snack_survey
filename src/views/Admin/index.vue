@@ -6,12 +6,12 @@
     <template #title>
       <div class="flex items-center gap-3">
         <span>{{ type === 'update' ? 'Cập nhật Topic' : 'Tạo Topic' }}</span>
-        <span v-if="showAddBtn" class="font-sans text-[10px] text-muted border-[2px] border-ink rounded-full px-2 py-0.5 bg-retro-yellow/50">Đang sửa</span>
+        <span v-if="showAddBtn" class="theme-chip font-sans text-[10px] text-muted px-2 py-0.5 bg-retro-yellow/50">Đang sửa</span>
       </div>
     </template>
     <div class="flex flex-col gap-5">
       <div>
-        <h3 class="font-mono font-black text-[9px] uppercase tracking-[.12em] text-muted mb-3">Thông tin cơ bản</h3>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Thông tin cơ bản</h3>
         <div class="space-y-3">
           <UiInput v-model="topicFormData.name" label="Tên" />
           <UiInput v-model="topicFormData.description" label="Mô tả" />
@@ -21,15 +21,15 @@
       <hr class="border-ink/10" />
 
       <div>
-        <h3 class="font-mono font-black text-[9px] uppercase tracking-[.12em] text-muted mb-3">Deadline</h3>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Deadline</h3>
         <div class="flex gap-3">
           <div class="flex-1 relative">
             <i class="mdi mdi-calendar text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
-            <input type="date" :value="dateStr" @change="onDateChange" class="w-full font-sans text-sm text-ink bg-surface border-[2px] border-ink rounded-xl px-9 py-2.5 outline-none shadow-neo focus:shadow-neo-md" />
+            <input type="date" :value="dateStr" @change="onDateChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
           </div>
           <div class="flex-1 relative">
             <i class="mdi mdi-clock-outline text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
-            <input type="time" :value="timeStr" @change="onTimeChange" class="w-full font-sans text-sm text-ink bg-surface border-[2px] border-ink rounded-xl px-9 py-2.5 outline-none shadow-neo focus:shadow-neo-md" />
+            <input type="time" :value="timeStr" @change="onTimeChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
           </div>
         </div>
       </div>
@@ -37,7 +37,7 @@
       <hr class="border-ink/10" />
 
       <div>
-        <h3 class="font-mono font-black text-[9px] uppercase tracking-[.12em] text-muted mb-3">Cài đặt</h3>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Cài đặt</h3>
         <div class="flex flex-wrap gap-x-6 gap-y-3">
           <UiToggle :model-value="!!topicFormData.link" @update:model-value="(v: boolean) => topicFormData.link = v" :label="`Link: ${topicFormData.link ? 'Có' : 'Không'}`" />
           <UiToggle :model-value="!!topicFormData.option" @update:model-value="(v: boolean) => topicFormData.option = v" :label="`Vote nhiều: ${topicFormData.option ? 'Có' : 'Không'}`" />
@@ -47,7 +47,7 @@
       <hr class="border-ink/10" />
 
       <div>
-        <h3 class="font-mono font-black text-[9px] uppercase tracking-[.12em] text-muted mb-3">Team</h3>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Team</h3>
         <div class="flex gap-4">
           <UiRadio :model-value="topicFormData.team ?? ''" @update:model-value="(v: string) => topicFormData.team = v as any" value="All" label="All" />
           <UiRadio :model-value="topicFormData.team ?? ''" @update:model-value="(v: string) => topicFormData.team = v as any" value="PHP" label="PHP" />
@@ -57,7 +57,7 @@
 
       <div v-if="topicFormData.link">
         <hr class="border-ink/10 mb-3" />
-        <h3 class="font-mono font-black text-[9px] uppercase tracking-[.12em] text-muted mb-3">Require</h3>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Require</h3>
         <div class="flex gap-4">
           <UiRadio :model-value="topicFormData.requireField ?? ''" @update:model-value="(v: string) => topicFormData.requireField = v as any" value="title" label="Title" />
           <UiRadio :model-value="topicFormData.requireField ?? ''" @update:model-value="(v: string) => topicFormData.requireField = v as any" value="link" label="Link" />
@@ -90,11 +90,11 @@
       <div class="flex gap-3">
         <div class="flex-1 relative">
           <i class="mdi mdi-calendar text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
-          <input type="date" :value="extDateStr" @change="onExtDateChange" class="w-full font-sans text-sm text-ink bg-surface border-[2px] border-ink rounded-xl px-9 py-2.5 outline-none shadow-neo focus:shadow-neo-md" />
+          <input type="date" :value="extDateStr" @change="onExtDateChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
         </div>
         <div class="flex-1 relative">
           <i class="mdi mdi-clock-outline text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
-          <input type="time" :value="extTimeStr" @change="onExtTimeChange" class="w-full font-sans text-sm text-ink bg-surface border-[2px] border-ink rounded-xl px-9 py-2.5 outline-none shadow-neo focus:shadow-neo-md" />
+          <input type="time" :value="extTimeStr" @change="onExtTimeChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
         </div>
       </div>
       <div class="flex justify-end gap-2">
@@ -118,7 +118,7 @@
     </template>
     <ul v-if="options.length" class="divide-y divide-ink/20">
       <li v-for="(item, i) in options" :key="i" class="flex items-center gap-4 px-1 py-4">
-        <img :src="item.thumbnail || DEFAULT_CARD_IMG" class="w-14 h-14 rounded-xl object-cover border-[2px] border-ink shrink-0" />
+        <img :src="item.thumbnail || DEFAULT_CARD_IMG" class="w-14 h-14 object-cover border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-[var(--radius-media)] shrink-0" />
         <div class="flex-1 min-w-0">
           <p class="font-sans text-base font-bold text-ink truncate">{{ item.title }}</p>
           <a v-if="item.link" :href="item.link" target="_blank" class="font-mono text-xs text-muted truncate block hover:text-terracotta hover:underline">{{ item.link }}</a>
@@ -188,7 +188,7 @@
       </div>
     </div>
 
-    <div class="bg-surface border-[2px] border-ink rounded-2xl shadow-neo-md p-6 overflow-x-auto">
+    <div class="theme-panel-md bg-surface p-6 overflow-x-auto">
       <table class="w-full border-collapse">
         <thead>
           <tr>
@@ -210,10 +210,10 @@
             <td class="px-2 py-3.5 border-b border-ink/10 font-sans text-sm text-ink">{{ (page - 1) * pageSize + i + 1 }}</td>
             <td class="px-2 py-3.5 border-b border-ink/10 font-sans text-sm font-bold text-ink">{{ item.name }}</td>
             <td class="px-2 py-3.5 border-b border-ink/10">
-              <span class="font-mono text-[10px] font-bold border-[2px] border-ink rounded-full px-2 py-0.5 inline-block" :class="teamBadgeClass(item.team)">{{ item.team }}</span>
+              <span class="theme-chip text-[10px] font-bold px-2 py-0.5 inline-block" :class="teamBadgeClass(item.team)">{{ item.team }}</span>
             </td>
             <td class="px-2 py-3.5 border-b border-ink/10">
-              <span class="font-mono text-[10px] font-bold border-[2px] border-ink rounded-full px-2 py-0.5 inline-block" :class="isTopicOpen(item) ? 'bg-sage text-white' : 'bg-retro-pink text-ink'">
+              <span class="theme-chip text-[10px] font-bold px-2 py-0.5 inline-block" :class="isTopicOpen(item) ? 'bg-sage text-white' : 'bg-retro-pink text-ink'">
                 {{ isTopicOpen(item) ? 'Mở' : 'Đóng' }}
               </span>
             </td>
@@ -238,11 +238,11 @@
       <div v-if="totalPages > 1" class="flex items-center justify-between pt-4 mt-1">
         <span class="font-sans text-xs text-muted">Tổng: {{ topics.length }} topic</span>
         <div class="flex items-center gap-1">
-          <button class="font-mono text-xs font-bold border-[2px] border-ink rounded-lg px-2.5 py-1.5 bg-surface hover:bg-cream transition-colors disabled:opacity-30 disabled:pointer-events-none" :disabled="page <= 1" @click="goToPage(page - 1)">
+          <button class="theme-chip text-xs font-bold px-2.5 py-1.5 bg-surface hover:bg-cream transition-colors disabled:opacity-30 disabled:pointer-events-none !rounded-[var(--radius-control)]" :disabled="page <= 1" @click="goToPage(page - 1)">
             <i class="mdi mdi-chevron-left"></i>
           </button>
-          <button v-for="p in totalPages" :key="p" class="font-mono text-xs font-bold border-[2px] border-ink rounded-lg px-3 py-1.5 transition-colors" :class="p === page ? 'bg-ink text-cream' : 'bg-surface hover:bg-cream'" @click="goToPage(p)">{{ p }}</button>
-          <button class="font-mono text-xs font-bold border-[2px] border-ink rounded-lg px-2.5 py-1.5 bg-surface hover:bg-cream transition-colors disabled:opacity-30 disabled:pointer-events-none" :disabled="page >= totalPages" @click="goToPage(page + 1)">
+          <button v-for="p in totalPages" :key="p" class="theme-chip text-xs font-bold px-3 py-1.5 transition-colors !rounded-[var(--radius-control)]" :class="p === page ? 'bg-ink text-cream' : 'bg-surface hover:bg-cream'" @click="goToPage(p)">{{ p }}</button>
+          <button class="theme-chip text-xs font-bold px-2.5 py-1.5 bg-surface hover:bg-cream transition-colors disabled:opacity-30 disabled:pointer-events-none !rounded-[var(--radius-control)]" :disabled="page >= totalPages" @click="goToPage(page + 1)">
             <i class="mdi mdi-chevron-right"></i>
           </button>
         </div>

@@ -20,28 +20,31 @@ withDefaults(defineProps<{
   <button
     :type="type"
     :disabled="disabled"
-    class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap select-none cursor-pointer font-mono font-extrabold uppercase tracking-[.06em] border-[2px] border-ink transition-[transform,box-shadow] duration-75 hover:translate-x-[1px] hover:translate-y-[1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-40 disabled:cursor-default disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-none"
+    class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap select-none cursor-pointer font-mono font-extrabold uppercase tracking-[.06em] border-solid transition-[transform,box-shadow] duration-100 disabled:opacity-40 disabled:cursor-default disabled:transform-none disabled:shadow-none"
+    :style="{
+      borderWidth: 'var(--border-w)',
+      borderColor: 'var(--stroke)',
+      borderRadius: shape === 'sharp' ? '0' : shape === 'pill' ? 'var(--radius-btn)' : 'var(--radius-control)',
+      boxShadow: variant === 'ghost' ? 'none' : 'var(--btn-shadow)'
+    }"
     :class="[
-      variant === 'primary' && 'bg-terracotta text-ink shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
-      variant === 'secondary' && 'bg-cream text-ink shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
-      variant === 'ink' && 'bg-ink text-cream shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
-      variant === 'ghost' && 'bg-transparent text-ink border-ink/40 shadow-none',
-      variant === 'sage' && 'bg-sage text-ink shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
-      variant === 'yellow' && 'bg-retro-yellow text-ink shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
-      variant === 'blue' && 'bg-retro-blue text-ink shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
-      variant === 'pink' && 'bg-retro-pink text-ink shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
-      variant === 'danger' && 'bg-retro-pink text-ink shadow-[3px_3px_0_0_rgba(28,25,23,0.8)]',
+      variant === 'primary' && 'bg-terracotta text-ink',
+      variant === 'secondary' && 'bg-cream text-ink',
+      variant === 'ink' && 'bg-ink text-cream',
+      variant === 'ghost' && 'bg-transparent text-ink opacity-90',
+      variant === 'sage' && 'bg-sage text-ink',
+      variant === 'yellow' && 'bg-retro-yellow text-ink',
+      variant === 'blue' && 'bg-retro-blue text-ink',
+      variant === 'pink' && 'bg-retro-pink text-ink',
+      variant === 'danger' && 'bg-retro-pink text-ink',
       size === 'xs' && 'text-[9px] px-2.5 py-1',
       size === 'sm' && 'text-[10px] px-3.5 py-1.5',
       size === 'md' && 'text-[11px] px-5 py-2.5',
       size === 'lg' && 'text-[13px] px-8 py-3.5',
       size === 'xl' && 'text-[14px] px-10 py-4',
       size === 'icon' && 'text-[11px] w-9 h-9 p-0',
-      shape === 'pill' && 'rounded-full',
-      shape === 'rounded' && 'rounded-xl',
-      shape === 'square' && 'rounded-lg',
-      shape === 'sharp' && 'rounded-none',
-      block && 'w-full'
+      block && 'w-full',
+      !disabled && 'hover:[transform:var(--press-hover)] hover:[box-shadow:var(--press-hover-shadow)] active:[transform:var(--press-active)] active:[box-shadow:var(--press-active-shadow)]'
     ]"
   >
     <slot />

@@ -3,12 +3,12 @@
     <img
       v-if="rank !== null && rank !== undefined"
       :src="RANK_ICON[rank]"
-      class="absolute -top-3 -left-3 w-12 h-12 z-20 drop-shadow-[1px_1px_0_rgba(28,25,23,0.6)] pointer-events-none"
+      class="absolute -top-3 -left-3 w-12 h-12 z-20 drop-shadow-[1px_1px_0_rgba(28,25,23,0.6)] pointer-events-none theme-rank-icon"
     />
     <div
-      class="border-[2px] border-ink rounded-xl bg-surface shadow-neo flex flex-col h-full overflow-hidden hover:translate-x-[1px] hover:translate-y-[1px] transition-[transform,box-shadow] duration-75"
+      class="theme-panel flex flex-col h-full !p-0 transition-[transform,box-shadow] duration-100 hover:[transform:var(--interactive-hover)]"
     >
-      <div class="w-full h-[150px]">
+      <div class="w-full h-[150px] overflow-hidden" :style="{ borderRadius: 'var(--radius-media) var(--radius-media) 0 0' }">
         <img :src="option?.thumbnail || DEFAULT_CARD_IMG" class="w-full h-full object-cover" />
       </div>
       <div class="flex flex-col flex-1 p-4">
@@ -22,11 +22,17 @@
             :src="user.avatar"
             :fallback="user.username"
             size="sm"
-            class="!w-7 !h-7 border-[2px] border-ink rounded-full ring-2 ring-surface"
+            class="!w-7 !h-7 border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-full ring-2 ring-surface"
           />
           <div
             v-if="option?.voteBy?.length > 3"
-            class="w-7 h-7 rounded-full border-2 border-ink bg-retro-blue font-mono font-bold text-[9px] flex items-center justify-center cursor-pointer"
+            class="w-7 h-7 font-mono font-bold text-[9px] flex items-center justify-center cursor-pointer bg-retro-blue"
+            :style="{
+              borderWidth: 'var(--border-w)',
+              borderStyle: 'solid',
+              borderColor: 'var(--stroke)',
+              borderRadius: '9999px'
+            }"
             :title="`${option?.voteBy?.length - 3} others`"
             @click.stop="onClickSeeMore(option)"
           >
@@ -34,7 +40,7 @@
           </div>
         </div>
         <i
-          class="mdi mdi-thumb-up text-2xl cursor-pointer transition-transform duration-75 hover:scale-110 active:scale-90"
+          class="mdi mdi-thumb-up text-2xl cursor-pointer transition-transform duration-100 hover:scale-110 active:scale-90"
           :class="option.voteBy.some((voter) => voter.id === currentAccount?.id) ? 'text-terracotta' : 'text-retro-blue'"
           @click.prevent="handleChangeVote(index)"
         />

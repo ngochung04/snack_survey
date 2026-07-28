@@ -25,8 +25,14 @@ const emit = defineEmits<{
       class="sr-only"
     />
     <div
-      class="w-5 h-5 rounded-full border-[2px] border-ink transition-colors duration-150"
+      class="w-5 h-5 transition-colors duration-150"
       :class="modelValue === value ? 'bg-terracotta' : 'bg-cream'"
+      :style="{
+        borderWidth: 'var(--border-w)',
+        borderStyle: 'solid',
+        borderColor: 'var(--stroke)',
+        borderRadius: '9999px'
+      }"
       @click="!disabled && emit('update:modelValue', value)"
     >
       <div

@@ -34,14 +34,14 @@
           />
 
           <div v-if="props.topicState.link">
-            <label class="block font-mono font-black text-[10px] uppercase tracking-[.1em] text-ink mb-1.5">
+            <label class="block theme-label text-ink mb-1.5">
               Upload Image (optional, max 5MB)
             </label>
             <input
               type="file"
               accept="image/*"
               @change="handleFileChange"
-              class="w-full font-sans text-sm text-ink bg-cream border-[3px] border-ink rounded-xl px-4 py-2.5 outline-none shadow-neo file:mr-3 file:py-1 file:px-3 file:border-[2px] file:border-ink file:rounded-lg file:bg-terracotta file:text-ink file:font-mono file:font-bold file:text-[10px] file:uppercase file:cursor-pointer"
+              class="theme-control w-full font-sans text-sm text-ink bg-cream px-4 py-2.5 outline-none file:mr-3 file:py-1 file:px-3 file:border file:border-[color:var(--stroke)] file:rounded-[var(--radius-control)] file:bg-terracotta file:text-ink file:font-mono file:font-bold file:text-[10px] file:uppercase file:cursor-pointer"
             />
             <p v-if="uploadMessage" class="font-sans text-xs text-terracotta mt-1">{{ uploadMessage }}</p>
           </div>
