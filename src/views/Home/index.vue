@@ -419,7 +419,7 @@ const getTopicOptions = async () => {
     const map: { [key: string]: IUser } = {}
     const combinedArray = []
     result.forEach((option) => {
-      option.voteBy.forEach((obj) => {
+      (option.voteBy || []).forEach((obj) => {
         if (!map[obj?.id]) {
           map[obj?.id] = obj
         }
