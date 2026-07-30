@@ -1,92 +1,67 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="340">
-    <template v-slot:activator="{ props: activatorProps }">
-      <v-btn
-        v-bind="activatorProps"
-        prepend-icon="mdi-plus"
-        width="fit-content"
-        color="primary"
-        height="46"
-        @click="handleResetForm"
-      >
-        Thêm option
-      </v-btn>
-    </template>
-    <template v-slot:default="{ isActive }">
-      <v-card title="Thêm Option" style="background-color: white; padding: 8px">
-        <v-form @submit.prevent :fast-fail="false">
-          <v-alert
-            v-if="message"
-            border="start"
-            variant="tonal"
-            closable
-            :color="hasError ? ENotificationColor.ERROR : ENotificationColor.SUCCESS"
-            class="mb-2"
-          >
-            {{ message }}</v-alert
-          >
-          <v-text-field
+  <div class="flex gap-2 items-center">
+    <UiButton variant="primary" size="md" @click="handleResetForm">
+      <i class="mdi mdi-plus"></i> Thêm option
+    </UiButton>
+    <UiDialog v-model="isOpen" title="Thêm Option">
+      <form @submit.prevent>
+        <UiAlert
+          v-if="message"
+          :type="hasError ? 'error' : 'success'"
+          :message="message as string"
+        />
+        <div class="space-y-3 mt-3">
+          <UiInput
             v-if="props.topicState && checkTitleRequired(props.topicState)"
             v-model="form.title"
             label="Tiêu đề"
-            :rules="titleRules"
-            single-line
-            variant="outlined"
-          ></v-text-field>
-          <v-text-field
+          />
+          <UiInput
             v-else
             v-model="form.title"
             label="Tiêu đề"
-            single-line
-            variant="outlined"
-          ></v-text-field>
+          />
 
-          <v-text-field
+          <UiInput
             v-if="props.topicState && checkLinkRequired(props.topicState)"
             v-model="form.link"
             label="Link"
-            :rules="linkRules"
-            single-line
-            variant="outlined"
-          ></v-text-field>
-          <v-text-field
+          />
+          <UiInput
             v-else
             v-model="form.link"
             label="Link"
-            single-line
-            variant="outlined"
-          ></v-text-field>
-          <v-file-input
-            v-if="props.topicState.link"
-            label="Upload Image (optional, max 5MB)"
-            accept="image/*"
-            outlined
-            @change="handleFileChange"
-            :error-messages="uploadMessage"
-          ></v-file-input>
+          />
 
-          <v-btn
-            text="Huỷ"
-            color="red-darken-2"
-            @click="isActive.value = false"
-            variant="flat"
-          ></v-btn>
-          <v-btn
-            type="submit"
-            @click="handleAddOption"
-            class="mb-2 float-right"
-            color="blue-darken-2"
-            variant="flat"
-            min-width="100"
-            >Thêm mới option</v-btn
-          >
-        </v-form>
-      </v-card>
-    </template>
-  </v-dialog>
+          <div v-if="props.topicState.link">
+            <label class="block theme-label text-ink mb-1.5">
+              Upload Image (optional, max 5MB)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              @change="handleFileChange"
+              class="theme-control w-full font-sans text-sm text-ink bg-cream px-4 py-2.5 outline-none file:mr-3 file:py-1 file:px-3 file:border file:border-[color:var(--stroke)] file:rounded-[var(--radius-control)] file:bg-terracotta file:text-ink file:font-mono file:font-bold file:text-[10px] file:uppercase file:cursor-pointer"
+            />
+            <p v-if="uploadMessage" class="font-sans text-xs text-terracotta mt-1">{{ uploadMessage }}</p>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center mt-4">
+          <UiButton variant="pink" size="sm" @click="isOpen = false">
+            Huỷ
+          </UiButton>
+          <UiButton type="submit" variant="blue" size="sm" @click="handleAddOption">
+            Thêm mới option
+          </UiButton>
+        </div>
+      </form>
+    </UiDialog>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { UiAlert, UiButton, UiDialog, UiInput } from '@/components/ui'
 import { postNewOption } from '@/services/option.service'
 import { reactive, ref } from 'vue'
 import {
@@ -96,7 +71,6 @@ import {
   checkLinkRequired,
   checkTitleRequired
 } from '../Admin/Admin.validate'
-import { ENotificationColor } from '@/core/constants/enum'
 import type { IOption } from '@/core/interfaces/model/option'
 import type { ITopic } from '@/core/interfaces/model/topic'
 import { THUMBNAIL_MAX_SIZE } from '@/core/constants/app'

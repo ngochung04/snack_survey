@@ -1,24 +1,20 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import Loading from '@/components/molecules/Loading/index.vue'
+import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import { computed } from 'vue'
-import useCommon from './core/hooks/useCommon'
+import { useCommonStore } from '@/stores'
 
-/**
- * Page: Root page
- */
-const { storeGetters } = useCommon('useCommonStore')
-const isLoading = computed(() => {
-  const { loading } = storeGetters()
-
-  return loading.value
-})
+const common = useCommonStore()
+const isLoading = computed(() => common.loading)
 </script>
 
 <template>
-  <RouterView />
-  <Loading :is-loading="isLoading" />
+  <div class="min-h-screen bg-cream">
+    <RouterView />
+    <Loading :is-loading="isLoading" />
+    <div class="fixed bottom-4 right-4 z-50">
+      <ThemeSwitcher />
+    </div>
+  </div>
 </template>
-<style lang="scss">
-@import '@/assets/styles/global.scss';
-</style>

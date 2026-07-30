@@ -1,145 +1,73 @@
 <template>
-  <div :style="cardStyle">
+  <div class="relative">
     <img
-      v-if="isRankCard && index < 3"
-      :src="RANK_ICON[index]"
-      width="40"
-      height="40"
-      style="position: absolute; top: -8px; left: -8px; z-index: 10"
+      v-if="rank !== null && rank !== undefined"
+      :src="RANK_ICON[rank]"
+      class="absolute -top-3 -left-3 w-12 h-12 z-20 drop-shadow-[1px_1px_0_rgba(28,25,23,0.6)] pointer-events-none theme-rank-icon"
     />
-    <v-card
-      style="
-        box-shadow: none;
-        border: 1px solid #ebebeb;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        padding: 8px;
-      "
-      :style="{ padding: isRankCard ? '8px' : '0', 'text-align': isRankCard ? 'center' : 'left' }"
+    <div
+      class="theme-panel flex flex-col h-full !p-0 transition-[transform,box-shadow] duration-100 hover:[transform:var(--interactive-hover)]"
     >
-      <div style="width: 100%" :style="{ height: isRankCard ? '136px' : '116px' }">
-        <v-img
-          :height="isRankCard ? '136px' : '116px'"
-          :src="Boolean(props.option?.thumbnail) ? props.option.thumbnail : DEFAULT_CARD_IMG"
-          cover
-        ></v-img>
+      <div class="w-full h-[150px] overflow-hidden" :style="{ borderRadius: 'var(--radius-media) var(--radius-media) 0 0' }">
+        <img :src="option?.thumbnail || DEFAULT_CARD_IMG" class="w-full h-full object-cover" />
       </div>
-      <div style="position: relative; flex: 1; border-top: 1px solid #ebebeb; margin-bottom: 8px">
-        <v-chip
-          v-if="isRankCard"
-          variant="flat"
-          append-icon="mdi-star"
-          style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%)"
-          color="orange"
-        >
-          <p style="font-size: 16px; font-weight: 700; color: #252525; margin: 0">
-            {{ option?.voteBy?.length }}
-          </p>
-        </v-chip>
-        <p
-          style="
-            font-size: 14px;
-            font-weight: 700;
-            color: #252525;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            overflow: hidden;
-            margin-bottom: 1px;
-            padding: 4px 8px 0;
-          "
-          :style="{ paddingTop: isRankCard ? '16px' : '4px' }"
-        >
-          {{ option?.title ?? '' }}
-        </p>
-        <a
-          :href="option?.link"
-          target="_blank"
-          style="
-            display: block;
-            width: 100%;
-            font-size: 12px;
-            padding: 0 8px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          "
-        >
-          {{ props.option?.link }}
-        </a>
-      </div>
-      <v-card-actions v-if="!isRankCard" style="padding-top: 0">
-        <div class="w-100 d-flex justify-space-between align-center">
-          <div class="d-flex mt-1">
-            <div
-              v-for="user in option?.voteBy?.slice(0, 4)"
-              :key="user.username"
-              style="margin-right: -8px"
-            >
-              <v-avatar color="secondary" class="m-1" size="30">
-                <v-img v-if="user.avatar" :src="user.avatar" :alt="user.username"></v-img>
-                <span v-else>{{ user.username?.charAt(0).toLocaleUpperCase() }}</span>
-                <v-tooltip activator="parent" location="top">{{ user.username }}</v-tooltip>
-              </v-avatar>
-            </div>
-            <div v-if="props.option?.voteBy?.length > 4" class="mr-1">
-              <v-avatar
-                color="light-blue-darken-2"
-                class="m-1 cursor-pointer"
-                size="30"
-                @click.stop="onClickSeeMore(option)"
-              >
-                {{ option?.voteBy?.length - 4 }}<sup>+</sup>
-              </v-avatar>
-              <v-tooltip activator="parent" location="top">{{
-                `${option?.voteBy?.length - 4} others people`
-              }}</v-tooltip>
-            </div>
+      <div class="flex flex-col flex-1 p-4">
+      <p class="font-sans text-base font-bold text-ink truncate">{{ option?.title ?? '' }}</p>
+      <a :href="option?.link" target="_blank" class="block text-sm text-muted truncate mt-0.5 hover:text-terracotta hover:underline">{{ option?.link }}</a>
+      <div class="flex items-center justify-between mt-auto pt-3">
+        <div class="flex -space-x-2">
+          <UiAvatar
+            v-for="user in option?.voteBy?.slice(0, 3)"
+            :key="user.username"
+            :src="user.avatar"
+            :fallback="user.username"
+            size="sm"
+            class="!w-7 !h-7 border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-full ring-2 ring-surface"
+          />
+          <div
+            v-if="option?.voteBy?.length > 3"
+            class="w-7 h-7 font-mono font-bold text-[9px] flex items-center justify-center cursor-pointer bg-retro-blue"
+            :style="{
+              borderWidth: 'var(--border-w)',
+              borderStyle: 'solid',
+              borderColor: 'var(--stroke)',
+              borderRadius: '9999px'
+            }"
+            :title="`${option?.voteBy?.length - 3} others`"
+            @click.stop="onClickSeeMore(option)"
+          >
+            +{{ option?.voteBy?.length - 3 }}
           </div>
-          <v-icon
-            icon="mdi-thumb-up"
-            size="x-large"
-            :color="
-              props.option.voteBy.some((voter) => voter.id === currentAccount?.id)
-                ? 'red-darken-1'
-                : 'blue-darken-3'
-            "
-            @click.prevent="handleChangeVote(index)"
-          ></v-icon>
         </div>
-      </v-card-actions>
-    </v-card>
+        <i
+          class="mdi mdi-thumb-up text-2xl cursor-pointer transition-transform duration-100 hover:scale-110 active:scale-90"
+          :class="option.voteBy.some((voter) => voter.id === currentAccount?.id) ? 'text-terracotta' : 'text-retro-blue'"
+          @click.prevent="handleChangeVote(index)"
+        />
+      </div>
+      </div>
+    </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import type { IOption } from '@/core/interfaces/model/option'
 import type { IUser } from '@/core/interfaces/model/user'
-import type { StyleValue } from 'vue'
-import { RANK_ICON, DEFAULT_CARD_IMG } from '@/core/constants/app'
+import { DEFAULT_CARD_IMG, RANK_ICON } from '@/core/constants/app'
+import { UiAvatar } from '@/components/ui'
 
-const props = defineProps<{
-  isRankCard: boolean
+defineProps<{
   index: number
   option: IOption
   currentAccount: IUser | null
-  cardStyle?: StyleValue
+  rank?: number | null
 }>()
+
 const emits = defineEmits<{
   (e: 'handleChangeVote', index: number): void
   (e: 'onClickSeeMore', payload: IOption): void
 }>()
 
-const handleChangeVote = (index: number) => {
-  emits('handleChangeVote', index)
-}
-
-const onClickSeeMore = (payload: IOption) => {
-  emits('onClickSeeMore', payload)
-}
-</script>
-
-<script lang="ts">
-export default {
-  name: 'OptionCard'
-}
+const handleChangeVote = (index: number) => emits('handleChangeVote', index)
+const onClickSeeMore = (payload: IOption) => emits('onClickSeeMore', payload)
 </script>

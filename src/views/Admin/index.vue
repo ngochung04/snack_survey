@@ -1,261 +1,283 @@
 <template>
-  <v-container>
-    <v-row justify="center">
-      <!-- Modal handle topic event -->
-      <v-dialog v-model="dialog" persistent width="auto">
-        <v-card min-height="120">
-          <v-card-text> {{ text }}</v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn class="text-none" color="red-darken-1" variant="flat" @click="dialog = false"
-              >Không</v-btn
-            >
-            <v-btn class="text-none" color="blue-darken-2" variant="flat" @click="handleTopic(type)"
-              >Có</v-btn
-            >
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+  <!-- Base modals first; nested/confirm last so equal z-50 stacks correctly (later = on top) -->
 
-      <!-- Modal error notification -->
-      <v-dialog v-model="errorDialog" width="auto">
-        <v-card>
-          <v-alert type="error" title="Lỗi!" text="Đã có lỗi xảy ra!" variant="tonal"></v-alert>
-          <v-card-actions>
-            <v-btn color="primary" block @click="errorDialog = false">Đóng</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+  <!-- Create/Edit Topic Dialog -->
+  <UiDialog v-model="formDialog" max-width="max-w-xl">
+    <template #title>
+      <div class="flex items-center gap-3">
+        <span>{{ type === 'update' ? 'Cập nhật Topic' : 'Tạo Topic' }}</span>
+        <span v-if="showAddBtn" class="theme-chip font-sans text-[10px] text-muted px-2 py-0.5 bg-retro-yellow/50">Đang sửa</span>
+      </div>
+    </template>
+    <div class="flex flex-col gap-5">
+      <div>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Thông tin cơ bản</h3>
+        <div class="space-y-3">
+          <UiInput v-model="topicFormData.name" label="Tên" />
+          <UiInput v-model="topicFormData.description" label="Mô tả" />
+        </div>
+      </div>
 
-      <!-- Modal create option for topic -->
-      <modal-create-option
-        v-if="isShowModalCreateOption"
-        @on-close="isShowModalCreateOption = false"
-        :topicState="topicState"
-      />
-      <!-- Modal edit option -->
-      <modal-edit-option
-        v-if="isShowModalEditOption"
-        @on-close="handleCloseEditOptionDialog"
-        :option="optionState"
-        :optionList="options"
-        :topicState="topicState"
-      />
+      <hr class="border-ink/10" />
 
-      <!-- Modal show list option of topic -->
-      <v-dialog v-model="listOptionDlg" width="auto" min-width="400">
-        <v-card class="">
-          <v-list density="compact" v-if="options.length">
-            <v-list-subheader>Danh sách option</v-list-subheader>
-            <v-list-item v-for="(item, i) in options" :key="i" :value="item" color="primary">
-              <template v-slot:append>
-                <v-icon
-                  icon="mdi-circle-edit-outline"
-                  color="green"
-                  class="pl-0 ml-0"
-                  @click="handleEditOption({ ...item, id: item.id })"
-                ></v-icon>
-                <v-icon
-                  icon="mdi-close"
-                  color="red"
-                  class="pl-0 ml-2"
-                  @click="deleteOption(item.id)"
-                ></v-icon>
-              </template>
-              <v-list-item-title :v-text="item.title">{{
-                item.link || item.title
-              }}</v-list-item-title>
-              <v-list-item-subtitle :v-text="item.voteCount"
-                >Số vote: {{ item.voteCount }}</v-list-item-subtitle
-              >
-            </v-list-item>
-          </v-list>
-          <v-alert type="warning" v-else title="" text="Không có option nào được thêm!"></v-alert>
-        </v-card>
-      </v-dialog>
+      <div>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Deadline</h3>
+        <div class="flex gap-3">
+          <div class="flex-1 relative">
+            <i class="mdi mdi-calendar text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
+            <input type="date" :value="dateStr" @change="onDateChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
+          </div>
+          <div class="flex-1 relative">
+            <i class="mdi mdi-clock-outline text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
+            <input type="time" :value="timeStr" @change="onTimeChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
+          </div>
+        </div>
+      </div>
 
-      <v-col sm="12" md="6" lg="4" xl="3">
-        <v-sheet class="pa-2" border rounded>
-          <p class="font-weight-black text-center">Topic</p>
-          <v-form fast-fail @submit.prevent>
-            <v-text-field
-              v-model="topicFormData.name"
-              label="Tên"
-              :rules="nameRules"
-            ></v-text-field>
-            <v-text-field
-              v-model="topicFormData.description"
-              label="Mô tả"
-              :rules="descriptionRules"
-            ></v-text-field>
-            <div class="d-flex">
-              <p class="font-weight-medium pr-2 pt-1">
-                <v-chip color="primary" label>
-                  <v-icon start icon="mdi-clock-time-eight-outline"></v-icon>Deadline</v-chip
-                >
-              </p>
-              <vue-date-picker v-model="topicFormData.date"></vue-date-picker>
-            </div>
+      <hr class="border-ink/10" />
 
-            <v-switch
-              v-model="topicFormData.status"
-              hide-details
-              color="green-darken-1"
-              inset
-              :label="`Trạng thái: ${topicFormData.status ? 'Mở' : 'Đóng'}`"
-            ></v-switch>
-            <v-switch
-              v-model="topicFormData.link"
-              hide-details
-              color="green-darken-1"
-              inset
-              :label="`Cho phép đóng góp link: ${topicFormData.link ? 'Có' : 'Không'}`"
-            ></v-switch>
-            <v-radio-group inline v-if="topicFormData.link" v-model="topicFormData.requireField">
-              <v-chip color="primary" label
-                ><v-icon start icon="mdi-account-circle-outline"></v-icon>Require</v-chip
-              >
-              <v-radio label="title" value="title"></v-radio>
-              <v-radio label="link" value="link"></v-radio>
-              <v-radio label="all" value="all"></v-radio>
-            </v-radio-group>
-            <v-switch
-              v-model="topicFormData.option"
-              hide-details
-              color="green-darken-1"
-              inset
-              :label="`Cho phép vote nhiều option: ${topicFormData.option ? 'Có' : 'Không'}`"
-            ></v-switch>
-            <v-radio-group inline v-model="topicFormData.team">
-              <v-chip color="primary" label
-                ><v-icon start icon="mdi-account-circle-outline"></v-icon>Team</v-chip
-              >
-              <v-radio label="PHP" value="PHP"></v-radio>
-              <v-radio label="FE" value="FE"></v-radio>
-              <v-radio label="All" value="All"></v-radio>
-            </v-radio-group>
-            <div class="btn-wrapper">
-              <v-btn
-                type="submit"
-                :block="!showAddBtn"
-                class="mt-2 bg-blue-darken-2"
-                :class="showAddBtn ? 'bg-green-darken-2 mr-2' : 'bg-blue-darken-2'"
-                @click="confirm(type)"
-                variant="elevated"
-                >{{ textBtn }}</v-btn
-              >
-              <v-btn
-                v-if="showAddBtn"
-                prepend-icon="mdi-plus"
-                class="mt-2 bg-blue-darken-2"
-                @click="cancelUpdate"
-                >Thêm mới</v-btn
-              >
-            </div>
-          </v-form>
-          <v-alert
-            v-if="alert"
-            border="start"
-            variant="tonal"
-            closable
-            :color="colorAlert"
-            class="mt-2"
+      <div>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Cài đặt</h3>
+        <div class="flex flex-wrap gap-x-6 gap-y-3">
+          <UiToggle :model-value="!!topicFormData.link" @update:model-value="(v: boolean) => topicFormData.link = v" :label="`Link: ${topicFormData.link ? 'Có' : 'Không'}`" />
+          <UiToggle :model-value="!!topicFormData.option" @update:model-value="(v: boolean) => topicFormData.option = v" :label="`Vote nhiều: ${topicFormData.option ? 'Có' : 'Không'}`" />
+        </div>
+      </div>
+
+      <hr class="border-ink/10" />
+
+      <div>
+        <h3 class="theme-label text-[9px] text-muted mb-3">Team</h3>
+        <div class="flex gap-4">
+          <UiRadio :model-value="topicFormData.team ?? ''" @update:model-value="(v: string) => topicFormData.team = v as any" value="All" label="All" />
+          <UiRadio :model-value="topicFormData.team ?? ''" @update:model-value="(v: string) => topicFormData.team = v as any" value="PHP" label="PHP" />
+          <UiRadio :model-value="topicFormData.team ?? ''" @update:model-value="(v: string) => topicFormData.team = v as any" value="FE" label="FE" />
+        </div>
+      </div>
+
+      <div v-if="topicFormData.link">
+        <hr class="border-ink/10 mb-3" />
+        <h3 class="theme-label text-[9px] text-muted mb-3">Require</h3>
+        <div class="flex gap-4">
+          <UiRadio :model-value="topicFormData.requireField ?? ''" @update:model-value="(v: string) => topicFormData.requireField = v as any" value="title" label="Title" />
+          <UiRadio :model-value="topicFormData.requireField ?? ''" @update:model-value="(v: string) => topicFormData.requireField = v as any" value="link" label="Link" />
+          <UiRadio :model-value="topicFormData.requireField ?? ''" @update:model-value="(v: string) => topicFormData.requireField = v as any" value="all" label="All" />
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center gap-2 pt-2">
+        <div v-if="type === 'update'" class="flex gap-2">
+          <UiButton variant="pink" size="sm" @click="openOptionsFromEdit">
+            <i class="mdi mdi-format-list-bulleted mr-1"></i> Options
+          </UiButton>
+          <UiButton variant="danger" size="sm" @click="handleDeleteFromEdit">
+            <i class="mdi mdi-delete mr-1"></i> Xóa
+          </UiButton>
+        </div>
+        <div class="ml-auto">
+          <UiButton variant="sage" @click="confirm(type)">{{ textBtn }}</UiButton>
+        </div>
+      </div>
+
+      <UiAlert v-if="alert" :type="colorAlert === 'red-lighten-1' ? 'error' : 'success'" :message="alert" />
+    </div>
+  </UiDialog>
+
+  <!-- Extend Dialog -->
+  <UiDialog v-model="extendDlg" title="Gia hạn topic" max-width="max-w-sm">
+    <div class="flex flex-col gap-4">
+      <p class="font-sans text-sm text-muted">Chọn deadline mới cho topic</p>
+      <div class="flex gap-3">
+        <div class="flex-1 relative">
+          <i class="mdi mdi-calendar text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
+          <input type="date" :value="extDateStr" @change="onExtDateChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
+        </div>
+        <div class="flex-1 relative">
+          <i class="mdi mdi-clock-outline text-muted absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none"></i>
+          <input type="time" :value="extTimeStr" @change="onExtTimeChange" class="w-full font-sans text-sm text-ink theme-control px-9 py-2.5 outline-none focus:[box-shadow:var(--elev-2)]" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-2">
+        <UiButton variant="secondary" @click="extendDlg = false">Hủy</UiButton>
+        <UiButton variant="primary" @click="confirmExtend">Xác nhận</UiButton>
+      </div>
+    </div>
+  </UiDialog>
+
+  <UiDialog v-model="listOptionDlg" max-width="max-w-2xl">
+    <template #title>
+      <div class="flex items-center justify-between w-full gap-2">
+        <span>Danh sách option</span>
+        <div class="flex gap-2">
+          <UiButton size="xs" variant="secondary" @click="isShowModalPickLibrary = true">
+            Từ thư viện
+          </UiButton>
+          <UiButton size="xs" variant="sage" @click="handleAddOption(topicId)">+ Thêm option</UiButton>
+        </div>
+      </div>
+    </template>
+    <ul v-if="options.length" class="divide-y divide-ink/20">
+      <li v-for="(item, i) in options" :key="i" class="flex items-center gap-4 px-1 py-4">
+        <img :src="item.thumbnail || DEFAULT_CARD_IMG" class="w-14 h-14 object-cover border-[length:var(--border-w)] border-[color:var(--stroke)] rounded-[var(--radius-media)] shrink-0" />
+        <div class="flex-1 min-w-0">
+          <p class="font-sans text-base font-bold text-ink truncate">{{ item.title }}</p>
+          <a v-if="item.link" :href="item.link" target="_blank" class="font-mono text-xs text-muted truncate block hover:text-terracotta hover:underline">{{ item.link }}</a>
+          <span class="font-mono text-[11px] font-semibold text-muted">{{ item.voteCount }} vote{{ item.voteCount > 1 ? 's' : '' }}</span>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <i class="mdi mdi-circle-edit-outline text-sage cursor-pointer text-xl" @click="handleEditOption({ ...item, id: item.id })" title="Sửa option" />
+          <i class="mdi mdi-close text-terracotta cursor-pointer text-xl" @click="deleteOption(item.id)" title="Xóa option" />
+        </div>
+      </li>
+    </ul>
+    <UiAlert v-else type="warning" message="Chưa có option nào!" />
+  </UiDialog>
+
+  <!-- Nested over option list -->
+  <modal-create-option
+    v-if="isShowModalCreateOption"
+    @on-close="handleCloseCreateOption"
+    :topicState="topicState"
+  />
+  <modal-edit-option
+    v-if="isShowModalEditOption"
+    @on-close="handleCloseEditOptionDialog"
+    :option="optionState"
+    :optionList="options"
+    :topicState="topicState"
+  />
+  <modal-option-library
+    v-if="isShowModalOptionLibrary"
+    @on-close="isShowModalOptionLibrary = false"
+  />
+  <modal-pick-from-library
+    v-if="isShowModalPickLibrary"
+    :topic-id="topicId"
+    :existing-options="options"
+    @on-close="isShowModalPickLibrary = false"
+    @on-added="refreshOptionList"
+  />
+
+  <!-- Top layer: confirm / error over form or other modals -->
+  <UiDialog v-model="dialog" title="Xác nhận">
+    <p class="font-sans text-sm text-ink">{{ text }}</p>
+    <div class="flex justify-end gap-2 mt-4">
+      <UiButton variant="secondary" @click="closeConfirmDialog">Không</UiButton>
+      <UiButton variant="primary" @click="handleTopic(type)">Có</UiButton>
+    </div>
+  </UiDialog>
+
+  <UiDialog v-model="errorDialog" title="Lỗi!">
+    <UiAlert type="error" message="Đã có lỗi xảy ra!" />
+    <div class="flex justify-end gap-2 mt-4">
+      <UiButton variant="primary" block @click="errorDialog = false">Đóng</UiButton>
+    </div>
+  </UiDialog>
+
+  <!-- Main Layout -->
+  <div class="max-w-6xl mx-auto px-6 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="font-serif font-black text-3xl text-ink">Quản lý Topic</h1>
+      <div class="flex gap-2">
+        <UiButton variant="secondary" size="md" @click="isShowModalOptionLibrary = true">
+          <i class="mdi mdi-bookshelf mr-1"></i> Thư viện
+        </UiButton>
+        <UiButton variant="primary" size="md" @click="openCreateForm">
+          <i class="mdi mdi-plus mr-1"></i> Thêm topic
+        </UiButton>
+      </div>
+    </div>
+
+    <div class="theme-panel-md bg-surface p-6 overflow-x-auto">
+      <table class="w-full border-collapse">
+        <thead>
+          <tr>
+            <th class="text-left font-mono font-black text-[10px] uppercase px-2 py-3 border-b-[2px] border-ink text-ink whitespace-nowrap w-12">STT</th>
+            <th class="text-left font-mono font-black text-[10px] uppercase px-2 py-3 border-b-[2px] border-ink text-ink">Tên topic</th>
+            <th class="text-left font-mono font-black text-[10px] uppercase px-2 py-3 border-b-[2px] border-ink text-ink whitespace-nowrap w-20">Team</th>
+            <th class="text-left font-mono font-black text-[10px] uppercase px-2 py-3 border-b-[2px] border-ink text-ink whitespace-nowrap w-24">Trạng thái</th>
+            <th class="text-left font-mono font-black text-[10px] uppercase px-2 py-3 border-b-[2px] border-ink text-ink whitespace-nowrap w-36">Deadline</th>
+            <th class="text-right font-mono font-black text-[10px] uppercase px-2 py-3 border-b-[2px] border-ink text-ink whitespace-nowrap w-24">Tác vụ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="(item, i) in paginatedTopics"
+            :key="item.id"
+            class="transition-colors"
+            :class="isTopicOpen(item) ? 'bg-sage/20 hover:bg-sage/30' : 'bg-retro-pink/20 hover:bg-retro-pink/30'"
           >
-            {{ alert }}</v-alert
-          >
-        </v-sheet>
-      </v-col>
-    </v-row>
+            <td class="px-2 py-3.5 border-b border-ink/10 font-sans text-sm text-ink">{{ (page - 1) * pageSize + i + 1 }}</td>
+            <td class="px-2 py-3.5 border-b border-ink/10 font-sans text-sm font-bold text-ink">{{ item.name }}</td>
+            <td class="px-2 py-3.5 border-b border-ink/10">
+              <span class="theme-chip text-[10px] font-bold px-2 py-0.5 inline-block" :class="teamBadgeClass(item.team)">{{ item.team }}</span>
+            </td>
+            <td class="px-2 py-3.5 border-b border-ink/10">
+              <span class="theme-chip text-[10px] font-bold px-2 py-0.5 inline-block" :class="isTopicOpen(item) ? 'bg-sage text-white' : 'bg-retro-pink text-ink'">
+                {{ isTopicOpen(item) ? 'Mở' : 'Đóng' }}
+              </span>
+            </td>
+            <td class="px-2 py-3.5 border-b border-ink/10 font-mono text-xs text-muted whitespace-nowrap">{{ dayjs(new Date((item?.date as any)?.seconds * 1000)).format('DD/MM/YYYY HH:mm') }}</td>
+            <td class="px-2 py-3.5 border-b border-ink/10">
+              <div class="flex items-center justify-end gap-1">
+                <UiButton size="xs" variant="secondary" @click="handleEditTopic(item.id)" title="Sửa topic">
+                  <i class="mdi mdi-pencil text-sm"></i>
+                </UiButton>
+                <UiButton size="xs" variant="yellow" @click="openExtend(item)" title="Gia hạn topic">
+                  <i class="mdi mdi-calendar-clock text-sm"></i>
+                </UiButton>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-if="!topics.length" class="text-center py-12">
+        <p class="font-sans text-sm text-muted">Chưa có topic nào</p>
+      </div>
 
-    <v-row justify="center">
-      <v-col sm="12" md="12" lg="12" xl="8">
-        <v-sheet class="pa-2" border rounded>
-          <v-table id="admin-table" fixed-header :height="topics.length > 10 ? '400px' : ''">
-            <thead>
-              <tr>
-                <th class="text-left" scope="col">STT</th>
-                <th class="text-left" scope="col">Tên topic</th>
-                <th class="text-left" scope="col">Team</th>
-                <th class="text-left" scope="col" style="width: 90px">Trạng thái</th>
-                <th class="text-left" scope="col" style="width: 90px">Deadline</th>
-                <th class="text-left" scope="col" style="width: 408px">Tác vụ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(item, index) in topics" :key="item.id">
-                <td>{{ index + 1 }}</td>
-                <td>{{ item.name }}</td>
-                <td>{{ item.team }}</td>
-                <td>
-                  {{ item.status === true || item.date.toDate() >= new Date() ? 'Mở' : 'Đóng' }}
-                </td>
-                <td>
-                  {{
-                    dayjs(new Date((item?.date as any)?.seconds * 1000)).format('DD/MM/YYYY HH:mm')
-                  }}
-                </td>
-                <td>
-                  <v-btn
-                    class="text-none w-auto ma-1"
-                    color="blue-darken-2"
-                    @click="handleEditTopic(item.id)"
-                    >Sửa</v-btn
-                  >
-                  <v-btn
-                    class="text-none w-auto ma-1"
-                    color="red-darken-1"
-                    @click="handleDeleteTopic(item.id)"
-                    >Xóa</v-btn
-                  >
-                  <v-btn
-                    class="text-none w-auto ma-1"
-                    color="green-darken-2"
-                    @click="handleAddOption(item.id)"
-                    >+Option</v-btn
-                  >
-                  <v-btn
-                    class="text-none w-auto ma-1"
-                    color="purple-darken-2"
-                    @click="showOptionList(item.id)"
-                    >List Option</v-btn
-                  >
-                </td>
-              </tr>
-            </tbody>
-          </v-table>
-        </v-sheet>
-      </v-col>
-    </v-row>
-  </v-container>
+      <div v-if="totalPages > 1" class="flex items-center justify-between pt-4 mt-1">
+        <span class="font-sans text-xs text-muted">Tổng: {{ topics.length }} topic</span>
+        <div class="flex items-center gap-1">
+          <button class="theme-chip text-xs font-bold px-2.5 py-1.5 bg-surface hover:bg-cream transition-colors disabled:opacity-30 disabled:pointer-events-none !rounded-[var(--radius-control)]" :disabled="page <= 1" @click="goToPage(page - 1)">
+            <i class="mdi mdi-chevron-left"></i>
+          </button>
+          <button v-for="p in totalPages" :key="p" class="theme-chip text-xs font-bold px-3 py-1.5 transition-colors !rounded-[var(--radius-control)]" :class="p === page ? 'bg-ink text-cream' : 'bg-surface hover:bg-cream'" @click="goToPage(p)">{{ p }}</button>
+          <button class="theme-chip text-xs font-bold px-2.5 py-1.5 bg-surface hover:bg-cream transition-colors disabled:opacity-30 disabled:pointer-events-none !rounded-[var(--radius-control)]" :disabled="page >= totalPages" @click="goToPage(page + 1)">
+            <i class="mdi mdi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, reactive, defineAsyncComponent } from 'vue'
-import VueDatePicker from '@vuepic/vue-datepicker'
+import { ref, watch, reactive, computed, defineAsyncComponent } from 'vue'
+import { UiButton, UiDialog, UiInput, UiToggle, UiAlert, UiRadio } from '@/components/ui'
 import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/plugins/firebase'
-import { getTopicById, getTopics } from '@/services/topic.service'
+import { getTopicById, useTopics } from '@/services/topic.service'
 import { getOptionsByTopicId } from '@/services/option.service'
-import { nameRules, descriptionRules } from './Admin.validate'
-import { initOption, initTopic, initTopicState } from './Admin.state'
+import { initOption, initTopic } from './Admin.state'
 import type { ITopic } from '@/core/interfaces/model/topic'
 import type { IOption } from '@/core/interfaces/model/option'
-import type { IState } from '@/core/interfaces/model/state'
 import { mappingObject } from '@/core/utils/mappingObject'
+import { DEFAULT_CARD_IMG } from '@/core/constants/app'
 import dayjs from 'dayjs'
 
 const ModalCreateOption = defineAsyncComponent(() => import('./ModalCreateOption.vue'))
 const ModalEditOption = defineAsyncComponent(() => import('./ModalEditOption.vue'))
+const ModalOptionLibrary = defineAsyncComponent(() => import('./ModalOptionLibrary.vue'))
+const ModalPickFromLibrary = defineAsyncComponent(() => import('./ModalPickFromLibrary.vue'))
 
-// State
-const format = ref<string>('')
-const topics = getTopics
+const topics = useTopics()
 const text = ref<string>('')
 const textBtn = ref<string>('Tạo mới')
 const topicId = ref<string>('')
 const topicCancelId = ref<string>('')
 const alert = ref<string>('')
 const errorDialog = ref<boolean>(false)
+const formDialog = ref<boolean>(false)
 const showAddBtn = ref<boolean>(false)
 const dialog = ref<boolean>(false)
 const type = ref<string>('create')
@@ -265,28 +287,113 @@ const options = ref<IOption[]>([])
 const listOptionDlg = ref<boolean>(false)
 const isShowModalCreateOption = ref<boolean>(false)
 const isShowModalEditOption = ref<boolean>(false)
+const isShowModalOptionLibrary = ref<boolean>(false)
+const isShowModalPickLibrary = ref<boolean>(false)
 const isFirstCheckStatus = ref<boolean>(true)
+const page = ref(1)
+const pageSize = 10
+const extendDlg = ref(false)
+const extendDate = ref<Date>(new Date())
+const extendTopicId = ref<string>('')
 
-const topicState = ref<IState<ITopic>>({ ...initTopicState })
+const extDateStr = computed(() => {
+  if (!extendDate.value) return ''
+  return extendDate.value.toISOString().split('T')[0]
+})
+
+const extTimeStr = computed(() => {
+  if (!extendDate.value) return ''
+  const d = extendDate.value
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+})
+
+const onExtDateChange = (e: Event) => {
+  const val = (e.target as HTMLInputElement).value
+  if (!val) return
+  const [y, m, day] = val.split('-').map(Number)
+  extendDate.value.setFullYear(y, m - 1, day)
+  extendDate.value = new Date(extendDate.value)
+}
+
+const onExtTimeChange = (e: Event) => {
+  const val = (e.target as HTMLInputElement).value
+  if (!val) return
+  const [h, min] = val.split(':').map(Number)
+  extendDate.value.setHours(h, min, 0, 0)
+  extendDate.value = new Date(extendDate.value)
+}
+
+const paginatedTopics = computed(() => {
+  const start = (page.value - 1) * pageSize
+  return topics.value.slice(start, start + pageSize)
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil((topics.value?.length || 0) / pageSize)))
+
+const goToPage = (p: number) => { page.value = p }
+
+watch(topics, () => {
+  if (page.value > totalPages.value) page.value = totalPages.value
+}, { deep: true })
+
+const topicState = ref({ data: undefined as ITopic | undefined })
 const optionState = ref<IOption>(initOption)
 const topicFormData = reactive<ITopic>({ ...initTopic })
 
-// Composition API
-watch(
-  () => topicFormData.date,
-  () => {
-    format.value = `${(topicFormData.date as Date).getDate()}/${
-      (topicFormData.date as Date).getMonth() + 1
-    }/${(topicFormData.date as Date).getFullYear()}`
+const toDate = (d: unknown): Date => {
+  if (d instanceof Date) return d
+  if (d && typeof d === 'object' && 'seconds' in (d as any)) return new Date((d as any).seconds * 1000)
+  return new Date()
+}
+
+const dateStr = computed(() => {
+  const d = topicFormData.date
+  if (!d) return ''
+  return toDate(d).toISOString().split('T')[0]
+})
+
+const timeStr = computed(() => {
+  const d = topicFormData.date
+  if (!d) return ''
+  const date = toDate(d)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+})
+
+const onDateChange = (e: Event) => {
+  const val = (e.target as HTMLInputElement).value
+  if (!val) return
+  const current = toDate(topicFormData.date)
+  const [y, m, day] = val.split('-').map(Number)
+  current.setFullYear(y, m - 1, day)
+  topicFormData.date = current
+}
+
+const onTimeChange = (e: Event) => {
+  const val = (e.target as HTMLInputElement).value
+  if (!val) return
+  const current = toDate(topicFormData.date)
+  const [h, min] = val.split(':').map(Number)
+  current.setHours(h, min, 0, 0)
+  topicFormData.date = current
+}
+
+const teamBadgeClass = (team: string | undefined) => {
+  switch (team) {
+    case 'PHP': return 'bg-retro-yellow/50 text-ink'
+    case 'FE': return 'bg-retro-blue/50 text-ink'
+    default: return 'bg-retro-pink/50 text-ink'
   }
-)
+}
+
+const isTopicOpen = (item: any) => {
+  const deadline = item?.date?.toDate ? item.date.toDate() : toDate(item?.date)
+  return item.status === true || deadline >= new Date()
+}
 
 watch(
   () => topics,
   async (topicsRef) => {
-    if (!topicsRef.value.length || !isFirstCheckStatus.value) {
-      return
-    }
+    if (!topicsRef.value.length || !isFirstCheckStatus.value) return
     isFirstCheckStatus.value = false
     const syncStatusList: Promise<void>[] = []
     const currentDay = new Date()
@@ -303,35 +410,24 @@ watch(
   { deep: true }
 )
 
-// Methods
-const confirm = (type: string) => {
-  if (!topicFormData.name) {
-    return false
-  }
-  if (topicFormData.date && topicFormData.date < new Date() && type === 'create') {
+const openCreateForm = () => {
+  cancelUpdate()
+  formDialog.value = true
+}
+
+const confirm = (actionType: string) => {
+  if (!topicFormData.name) return false
+  if (topicFormData.date && topicFormData.date < new Date() && actionType === 'create') {
     colorAlert.value = 'red-lighten-1'
     alert.value = 'Thời gian phải lớn hơn hiện tại'
-    setTimeout(() => {
-      alert.value = ''
-      colorAlert.value = 'green-darken-1'
-    }, 2000)
+    setTimeout(() => { alert.value = ''; colorAlert.value = 'green-darken-1' }, 2000)
     return false
   }
-  switch (type) {
-    case 'create':
-      text.value = 'Bạn có muốn thêm topic không?'
-      break
-    case 'update':
-      text.value = 'Bạn có muốn cập nhật topic không?'
-      break
-  }
+  topicFormData.status = true
+  text.value = actionType === 'create' ? 'Bạn có muốn thêm topic không?' : 'Bạn có muốn cập nhật topic không?'
   dialog.value = true
 }
 
-/**
- * update topic state and show create option modal
- * @param {string} id
- */
 const handleAddOption = async (id: string) => {
   const topicData = await getTopicById(id)
   topicState.value.data = topicData
@@ -342,38 +438,43 @@ const handleDeleteTopic = (topicVal: string) => {
   text.value = 'Bạn có muốn xóa topic không?'
   dialog.value = true
   type.value = 'delete'
-  if (topicId.value === topicVal) {
-    reset.value = true
-  }
+  if (topicId.value === topicVal) reset.value = true
   topicCancelId.value = topicVal
+}
+
+const handleDeleteFromEdit = () => {
+  handleDeleteTopic(topicId.value)
+}
+
+const closeConfirmDialog = () => {
+  dialog.value = false
+  if (formDialog.value && topicId.value && type.value === 'delete') {
+    type.value = 'update'
+  }
+}
+
+const openOptionsFromEdit = async () => {
+  formDialog.value = false
+  await showOptionList(topicId.value)
 }
 
 const cancelUpdate = () => {
   textBtn.value = 'Tạo mới'
   type.value = 'create'
   showAddBtn.value = false
-  dialog.value = false
-  topicId.value = initTopic.id
-  mappingObject(topicFormData, {
-    ...initTopic
-  })
+  topicId.value = ''
+  mappingObject(topicFormData, { ...initTopic })
 }
 
 const handleEditTopic = async (id: string) => {
-  // Find the topic by topic id
   const topicData = await getTopicById(id)
   if (topicData?.name) {
     topicId.value = topicData.id
-    mappingObject(topicFormData, {
-      ...topicData,
-      updatedAt: new Date()
-    })
-
+    mappingObject(topicFormData, { ...topicData, updatedAt: new Date() })
     textBtn.value = 'Cập nhật'
     type.value = 'update'
     showAddBtn.value = true
-  } else {
-    console.log('No such document!')
+    formDialog.value = true
   }
 }
 
@@ -381,38 +482,38 @@ const getOptions = async (topicId: string, isSetOption: boolean = false) => {
   const topicData = await getOptionsByTopicId(topicId)
   let optionArr = [] as IOption[]
   setTimeout(() => {
-    if (isSetOption) {
-      options.value = topicData.value as IOption[]
-    } else {
-      optionArr = topicData.value as IOption[]
-    }
+    if (isSetOption) options.value = topicData.value as IOption[]
+    else optionArr = topicData.value as IOption[]
   }, 200)
   return optionArr
 }
 
-// Reducer for confirm dialog
-const handleTopic = async (type: string) => {
-  switch (type) {
+const handleTopic = async (actionType: string) => {
+  switch (actionType) {
     case 'create':
       try {
-        await addDoc(collection(db, 'topics'), { ...topicFormData, updatedAt: new Date() })
+        const docRef = await addDoc(collection(db, 'topics'), {
+          ...topicFormData,
+          status: true,
+          updatedAt: new Date()
+        })
         dialog.value = false
+        formDialog.value = false
         alert.value = 'Thêm mới thành công'
         setTimeout(() => {
           alert.value = ''
         }, 2000)
+        await showOptionList(docRef.id)
       } catch (e) {
         errorDialog.value = true
-        if (e instanceof Error) {
-          console.error(e.message)
-        }
+        if (e instanceof Error) console.error(e.message)
       }
       break
     case 'update':
-      update({ ...topicFormData, updatedAt: new Date() })
+      await update({ ...topicFormData, updatedAt: new Date() })
       break
     case 'delete':
-      deleteTopic()
+      await deleteTopic()
       break
   }
 }
@@ -422,15 +523,12 @@ const update = async (topic: object) => {
   try {
     await updateDoc(topicRef, topic)
     dialog.value = false
+    formDialog.value = false
     alert.value = 'Cập nhật thành công'
-    setTimeout(() => {
-      alert.value = ''
-    }, 2000)
+    setTimeout(() => { alert.value = '' }, 2000)
   } catch (e) {
     errorDialog.value = true
-    if (e instanceof Error) {
-      console.error(e.message)
-    }
+    if (e instanceof Error) console.error(e.message)
   }
 }
 
@@ -438,15 +536,36 @@ const deleteTopic = async () => {
   try {
     await deleteDoc(doc(db, 'topics', topicCancelId.value))
     dialog.value = false
+    formDialog.value = false
+    listOptionDlg.value = false
     alert.value = ''
-    if (reset.value === true) {
-      cancelUpdate()
-    }
+    if (reset.value === true) cancelUpdate()
   } catch (e) {
     errorDialog.value = true
-    if (e instanceof Error) {
-      console.error(e.message)
-    }
+    if (e instanceof Error) console.error(e.message)
+  }
+}
+
+const openExtend = (item: any) => {
+  extendTopicId.value = item.id
+  const d = item.date
+  extendDate.value = d?.toDate ? d.toDate() : new Date(d as any)
+  extendDlg.value = true
+}
+
+const confirmExtend = async () => {
+  try {
+    await updateDoc(doc(db, 'topics', extendTopicId.value), {
+      date: extendDate.value,
+      status: true,
+      updatedAt: new Date()
+    })
+    extendDlg.value = false
+    alert.value = 'Gia hạn thành công'
+    setTimeout(() => { alert.value = '' }, 2000)
+  } catch (e) {
+    errorDialog.value = true
+    if (e instanceof Error) console.error(e.message)
   }
 }
 
@@ -457,34 +576,41 @@ const showOptionList = async (id: string) => {
   topicState.value.data = await getTopicById(id)
 }
 
+const refreshOptionList = async () => {
+  if (!topicId.value) return
+  await getOptions(topicId.value, true)
+}
+
+const handleCloseCreateOption = async () => {
+  isShowModalCreateOption.value = false
+  await refreshOptionList()
+}
+
 const deleteOption = async (optionId: string) => {
   await deleteDoc(doc(db, 'options', optionId))
   options.value = await getOptions(topicId.value, true)
 }
 
-// open edit option modal
 const handleEditOption = async (option: IOption) => {
   optionState.value = option
   isShowModalEditOption.value = true
 }
-// close edit option modal
+
 const handleCloseEditOptionDialog = async () => {
   await getOptions(topicId.value, true)
   isShowModalEditOption.value = false
 }
 </script>
-<style lang="scss" scoped>
-.topic-tbl {
-  max-height: 300px;
-  overflow: auto;
-}
-.btn-wrapper {
-  text-align: center;
-}
-#admin-table {
-  tr > th,
-  td {
-    padding: 0 8px;
-  }
+
+<style scoped>
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  cursor: pointer;
 }
 </style>

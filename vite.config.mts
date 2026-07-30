@@ -4,12 +4,13 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import basicSsl from '@vitejs/plugin-basic-ssl'
+import tailwindcss from '@tailwindcss/vite'
 import dotenv from 'dotenv'
 dotenv.config()
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), vueJsx(), basicSsl()],
+  plugins: [tailwindcss(), vue(), vueJsx(), basicSsl()],
   server: {
     host: true,
     https: true

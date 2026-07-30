@@ -1,4 +1,5 @@
 import type { IOption } from '@/core/interfaces/model/option'
+import type { IOptionLibrary } from '@/core/interfaces/model/optionLibrary'
 import { fetchDOMMetadata, fetchOpenGraphMetadata } from '@/core/utils/metadata'
 import { db } from '@/plugins/firebase'
 import {
@@ -8,7 +9,6 @@ import {
   getDocs,
   query,
   where,
-  getDoc,
   orderBy,
   updateDoc,
   limit,
@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore'
 import { useCollection } from 'vuefire'
 import { uploadImageToFirebase } from './upload.service'
+import { upsertOptionLibrary } from './optionLibrary.service'
 import type { IUser } from '@/core/interfaces/model/user'
 
 /**
@@ -39,6 +40,27 @@ export const getRankByTopicId = (topicId: string) => {
   )
 }
 
+const FIRESTORE_IN_LIMIT = 30
+
+const mapOptionDoc = (d: { id: string; data: () => Record<string, unknown> }): IOption =>
+  ({ ...d.data(), id: d.id }) as IOption
+
+/**
+ * Options belonging to the given topic ids (chunked Firestore `in` queries).
+ */
+export const getOptionsByTopicIds = async (topicIds: string[]): Promise<IOption[]> => {
+  const uniqueIds = [...new Set(topicIds.filter(Boolean))]
+  if (!uniqueIds.length) return []
+
+  const results: IOption[] = []
+  for (let i = 0; i < uniqueIds.length; i += FIRESTORE_IN_LIMIT) {
+    const chunk = uniqueIds.slice(i, i + FIRESTORE_IN_LIMIT)
+    const snapshot = await getDocs(query(collection(db, 'options'), where('topicId', 'in', chunk)))
+    snapshot.docs.forEach((d) => results.push(mapOptionDoc(d)))
+  }
+  return results
+}
+
 /**
  * Get list all options
  * @param {}
@@ -47,7 +69,7 @@ export const getRankByTopicId = (topicId: string) => {
 export const getAllOptions = async (): Promise<IOption[]> => {
   const snapshot = await getDocs(query(collection(db, 'options')))
   if (snapshot.docs) {
-    const res = snapshot.docs.map((doc) => ({ ...doc.data() })) as IOption[]
+    const res = snapshot.docs.map((d) => mapOptionDoc(d)) as IOption[]
     return res
   } else {
     return []
@@ -59,19 +81,24 @@ export const getAllOptions = async (): Promise<IOption[]> => {
  * @param {string} title
  * @param {string} link
  * @param {string} topicId
+ * @param image optional upload file
+ * @param existingThumbnail skip OG fetch when cloning from library
  */
 export const postNewOption = async (
   title: string,
   link: string,
   topicId: string,
-  image?: File | null
+  image?: File | null,
+  existingThumbnail?: string | null
 ) => {
   try {
     let thumbnail = ''
 
     if (image) {
       thumbnail = (await uploadImageToFirebase(image)) || ''
-    } else {
+    } else if (existingThumbnail) {
+      thumbnail = existingThumbnail
+    } else if (link) {
       const metadata = (await fetchOpenGraphMetadata(link)) || (await fetchDOMMetadata(link))
       thumbnail = metadata?.image || ''
     }
@@ -83,11 +110,52 @@ export const postNewOption = async (
       voteBy: [],
       voteCount: 0
     })
+    await upsertOptionLibrary(title, link, thumbnail)
     return docref.firestore.toJSON()
   } catch (e) {
     if (e instanceof Error) throw new Error(e.message)
     else throw e
   }
+}
+
+const isDuplicateInTopic = (item: { title: string; link: string }, existing: IOption[]) => {
+  const title = (item.title || '').trim()
+  const link = (item.link || '').trim()
+  return existing.some((option) => {
+    if (link && option.link && option.link.trim() === link) return true
+    if (!link && title && option.title?.trim() === title) return true
+    return false
+  })
+}
+
+/**
+ * Clone selected library items into a topic (skips duplicates).
+ */
+export const postOptionsFromLibrary = async (
+  items: IOptionLibrary[],
+  topicId: string,
+  existing: IOption[]
+) => {
+  let added = 0
+  let skipped = 0
+  for (const item of items) {
+    if (isDuplicateInTopic(item, existing)) {
+      skipped += 1
+      continue
+    }
+    await postNewOption(item.title, item.link, topicId, null, item.thumbnail)
+    existing.push({
+      id: '',
+      title: item.title,
+      link: item.link,
+      topicId,
+      voteBy: [],
+      voteCount: 0,
+      thumbnail: item.thumbnail
+    })
+    added += 1
+  }
+  return { added, skipped }
 }
 
 /**
